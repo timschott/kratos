@@ -3,11 +3,10 @@ import json
 import re 
 import string
 
-# secrets.
+# imports.
 import s_config
 
-# news api: https://newsapi.org/docs/client-libraries/python
-# they give us a client. cool! 
+#news api
 from newsapi import NewsApiClient
 
 # web scrape
@@ -18,7 +17,8 @@ def init_client(key):
 	if (key is not None):
 		return NewsApiClient(news_api_key = key)
 
-"""information about the api call
+"""
+	information about the api call
 	
 	param: api_client 
 		the initalized api client 
@@ -62,13 +62,13 @@ def api_call(api_client, search_phrase, source, date_from, date_to,
 	
 	return all_articles
 
-'''
+"""
 	param: article_json, raw news api response blob
 		will return just the urls from these articles
 		(graphql would be great, here)
 	return: article_data, dict of article titles and urls
 
-''' 
+"""
 
 def get_article_dict(article_json):
 
@@ -93,7 +93,7 @@ def get_article_dict(article_json):
 
 	return article_data
 
-'''
+"""
 	param: url, article.
 	return: article body - everything inside the body p tags.
 		now, the reason its important to capture this information programmatically
@@ -104,7 +104,7 @@ def get_article_dict(article_json):
 		more transparent and i can continually update the regex should the disclaimer ever change.
 		plus if i want to do things like print out the context of the disclaimer, i have all the paras.
 
-'''
+"""
 
 def get_article_text(url):
 
@@ -155,14 +155,14 @@ def get_article_text(url):
 # (Amazon founder and chief executive Jeff Bezos owns The Washington Post.)
 # (Amazon’s founder, Jeff Bezos, owns The Washington Post.)
 
-'''
+"""
 	param: paragraphs, list of paragraphs for the article (usually around 35-40)
 	return: string, 
 		positive case: ideally the clinching "disclaimer", but in the odd case its not enclosed in parentheses, the paragraph
 		the disclaimer is found in. 
 		negative case: 'not found'
 
-'''
+"""
 
 def find_note(paragraphs):
 
