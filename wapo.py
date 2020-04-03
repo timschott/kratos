@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 
 def init_client(key):
 	if (key is not None):
-		return NewsApiClient(api_key = key)
+		return NewsApiClient(news_api_key = key)
 
 """information about the api call
 	
@@ -194,7 +194,7 @@ def find_note(paragraphs):
 if __name__ == "__main__":
 
 	# initialize client 
-	news_client = init_client(s_config.api_key)
+	news_client = init_client(s_config.news_api_key)
 
 	# api call
 	article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-03-30T00:24:52', '2020-03-31T00:24:52', 'publishedAt')
@@ -210,6 +210,6 @@ if __name__ == "__main__":
 		results.append(find_note(paras))
 
 	# for every result, check and tweet (or not)
-	
+
 
 
