@@ -1,10 +1,7 @@
 # !/usr/local/bin/python3
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 import json
-import datetime
-import re   ## only use with malformed html - this is not efficient
+import re 
+import string
 
 # secrets.
 import s_config
@@ -26,7 +23,8 @@ def init_client(key):
 	param: api_client 
 		the initalized api client 
 	param: search_phrase is what we're searching for
-		must be url encoded to work
+		to shrink down the target set, we can easily search for Bezos' (distinct) last name.
+		the leading '+' means its required.
 		key - q
 	param: source is the entity we're pulling from
 		for us, we'll use the-washington-post
@@ -41,6 +39,7 @@ def init_client(key):
 		key - sort_by
 	client method we'll hit is
 	newsapi#get_everything
+	return: all_articles, the big api response
 
 """
 
@@ -48,6 +47,7 @@ def api_call(api_client, search_phrase, source, date_from, date_to,
 				sort_type):
 
 	if (api_client is None):
+		print ('null client')
 		return null
 	
 	## json!
@@ -56,46 +56,160 @@ def api_call(api_client, search_phrase, source, date_from, date_to,
                                       from_param=date_from,
                                       to=date_to,
                                       sort_by=sort_type)
-	if (all_articles is not None):
-		return all_articles
+	if (all_articles is None):
+		print ('empty json from api')
+		return null
+	
+	return all_articles
+
+'''
+	param: article_json, raw news api response blob
+		will return just the urls from these articles
+		(graphql would be great, here)
+	return: article_data, dict of article titles and urls
+
+''' 
+
+def get_article_dict(article_json):
+
+	if (article_json is None):
+		print ('article json is null in #get_article_urls')
+		return null
+
+	articles = article_json["articles"]
+
+	if (articles is None):
+		print ('malformed json')
+		return null
+
+	titles = []
+	urls = []
+
+	for article in articles:
+		titles.append(article["title"])
+		urls.append(article["url"])
+
+	article_data = dict(zip(titles, urls))
+
+	return article_data
+
+'''
+	param: url, article.
+	return: article body - everything inside the body p tags.
+		now, the reason its important to capture this information programmatically
+		via bs4 is so we have the ability to comb through the entire article body
+		which is not possible using the news API (there is a character limit in the API response)
+		this tees up a forthcoming, simple regex for the "disclaimer".
+		i think this approach is preferable to relying on the news api's search because its
+		more transparent and i can continually update the regex should the disclaimer ever change.
+		plus if i want to do things like print out the context of the disclaimer, i have all the paras.
+
+'''
+
+def get_article_text(url):
+
+	if (url is None):
+		print ('broken url')
+		return null
+
+	paragraphs = []
+
+	html = urlopen(url)
+	soup = BeautifulSoup(html, 'lxml')
+
+	## First part.
+
+	teaser_div = soup.find("div", {"class": "teaser-content"})
+	teaser_section = teaser_div.find("section")
+
+	if (teaser_section is None):
+		print ('teaser section is null')
+		return null
+
+	for div in teaser_section.find_all("div"):
+		if (div.find("p")):
+			paragraphs.append(div.find("p").getText())
+
+	## Second part.
+
+	remainder_div = soup.find("div", {"class": "remainder-content"})
+	remainder_section = remainder_div.find("section")
+
+	# print (remainder_section)
+
+	if (remainder_section is None):
+		print ('remainder section is null')
+		return null
+
+	for div in remainder_section.find_all("div"):
+		if (div.find("p")):
+			paragraphs.append(div.find("p").getText())
+
+	if (paragraphs is None):
+		print ('paragraphs list is blank.')
+		return null
+
+	return paragraphs
+
+# (Disclosure: Amazon chief executive Jeff Bezos owns The Washington Post.)
+# (Amazon founder and chief executive Jeff Bezos owns The Washington Post.)
+# (Amazon’s founder, Jeff Bezos, owns The Washington Post.)
+
+'''
+	param: paragraphs, list of paragraphs for the article (usually around 35-40)
+	return: string, 
+		positive case: ideally the clinching "disclaimer", but in the odd case its not enclosed in parentheses, the paragraph
+		the disclaimer is found in. 
+		negative case: 'not found'
+
+'''
+
+def find_note(paragraphs):
+
+	if (paragraphs is None):
+		return ('blank paragraphs supplied to #find_note')
+		return null
+
+	## strip punctuation and lowercase.
+	for p in paragraphs:
+
+		stripped = p.translate(str.maketrans('', '', string.punctuation))
+		lower = stripped.lower()
+
+		## fairly simple regex.
+		x = re.search("jeff bezos owns the washington post", lower)
+
+		## its almost always between ()'s, so search for whatevers in that.
+		if (x):
+			context = re.search('\(.*?Bezos.*?\)', p)
+			if (context):
+				return context.group(0)
+			else:
+				return p
+		else:
+			continue
+
+	return 'not found'
 
 if __name__ == "__main__":
 
+	# initialize client 
 	news_client = init_client(s_config.api_key)
+
 	# api call
-	article_json = api_call(news_client, "trump", 'the-washington-post', '2020-03-30T00:24:52', '2020-03-31T00:24:52', 'publishedAt')
+	article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-03-30T00:24:52', '2020-03-31T00:24:52', 'publishedAt')
 	# print (article_json)
 
-	# testing scraping.
-	url = "https://www.washingtonpost.com/opinions/2020/03/30/lot-bad-things-got-into-rescue-package-heres-list/"
-	html = urlopen(url)
-	soup = BeautifulSoup(html, 'lxml')
-	title = soup.title
-	# print(title)
-	## first part 
-	'''
-	my_div = soup.find("div", {"class": "teaser-content"})
+	article_dict = get_article_dict(article_json)
 
-	my_section = my_div.find("section")
+	# for every url
+	results = []
+	for url in article_dict.values():
+		# paragraphs of that article
+		paras = get_article_text(url)
+		results.append(find_note(paras))
 
-	for div in my_section.find_all("div"):
-		for p in div.find("p"):
-			print (p)
-			'''
-	## second part
-	my_other_div = soup.find("div", {"class": "remainder-content"})
-
-	my_other_section = my_other_div.find("section")
-
-	for div in my_other_section.find_all("div"):
-		if (div.find("p")):
-			print (div.find("p").getText());
-				#print(re.sub("(\<.*?\>)", "",p)
-			print ('---------------')
-
-	## teaser-content
-	## <div class="remainder-content">
-
-
+	# for every result, check and tweet (or not)
+	
 
 
