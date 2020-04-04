@@ -241,7 +241,7 @@ def find_note(paragraphs):
 		lower = stripped.lower()
 
 		## fairly simple regex.
-		x = re.search("jeff bezos owns the washington post", lower)
+		x = re.search("jeff bezos(.*)own(.*)washington post", lower)
 
 		## its almost always between ()'s, so search for whatevers in that.
 		## search original paragraphs, we want the original form
