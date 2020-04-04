@@ -1,50 +1,79 @@
 # !/usr/local/bin/python3
+
+## parse blob
 import json
+
+## regex
 import re 
 import string
 
-# imports.
+## imports.
 import s_config
 
-#news api
+##news api
 from newsapi import NewsApiClient
 
-# web scrape
+## scrape
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
 
-# twitter clent
+## twitter clent
 import tweepy
+
+## date 
+from datetime import date, datetime, timedelta
+
+## schleep
+from time import sleep
 
 def init_client(key):
 	if (key is None):
 		print ('blank news api key')
-		return null
+		return None
 	return NewsApiClient(api_key = key)
 
 def init_twitter_client(api_key, secret_key, access_token, access_secret):
 
 	if (api_key is None):
 		print('twitter api key is null')
-		return null
+		return None
 
 	if (secret_key is None):
 		print ('twitter secret is null')
-		return null
+		return None
 
 	if (access_token is None):
 		print ('twitter token is null')
-		return null
+		return None
 
 	if (access_secret is None):
 		print ('twitter secret is null')
-		return null
+		return None
 
 	auth = tweepy.OAuthHandler(api_key, secret_key)
 	auth.set_access_token(access_token, access_secret)
 	client = tweepy.API(auth)
-	
+
 	return client
+
+"""
+	get todays date and yesterdays date, fomratted for the api call.
+	todays date, at 6:00
+	yesterdays date, at 6:01
+	return list with both dates. 
+
+"""
+
+def get_dates():
+
+	today = datetime.today().strftime('%Y-%m-%d')
+	yesterday = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+
+	date_list = []
+	date_list.append(today + 'T18:00:00') 
+	date_list.append(yesterday + 'T18:01:00')
+
+	return date_list
 
 """
 	information about the api call
@@ -77,7 +106,7 @@ def api_call(api_client, search_phrase, source, date_from, date_to,
 
 	if (api_client is None):
 		print ('null client')
-		return null
+		return None
 	
 	## json!
 	all_articles = api_client.get_everything(q=search_phrase,
@@ -87,7 +116,7 @@ def api_call(api_client, search_phrase, source, date_from, date_to,
                                       sort_by=sort_type)
 	if (all_articles is None):
 		print ('empty json from api')
-		return null
+		return None
 	
 	return all_articles
 
@@ -103,13 +132,13 @@ def get_article_dict(article_json):
 
 	if (article_json is None):
 		print ('article json is null in #get_article_urls')
-		return null
+		return None
 
 	articles = article_json["articles"]
 
 	if (articles is None):
 		print ('malformed json')
-		return null
+		return None
 
 	titles = []
 	urls = []
@@ -123,7 +152,7 @@ def get_article_dict(article_json):
 	return article_data
 
 """
-	param: url, article.
+	param: url, link to article.
 	return: article body - everything inside the body p tags.
 		now, the reason its important to capture this information programmatically
 		via bs4 is so we have the ability to comb through the entire article body
@@ -139,7 +168,7 @@ def get_article_text(url):
 
 	if (url is None):
 		print ('broken url')
-		return null
+		return None
 
 	paragraphs = []
 
@@ -149,11 +178,16 @@ def get_article_text(url):
 	## First part.
 
 	teaser_div = soup.find("div", {"class": "teaser-content"})
+
+	if (teaser_div is None):
+		print('teaser div is null')
+		return None
+
 	teaser_section = teaser_div.find("section")
 
 	if (teaser_section is None):
 		print ('teaser section is null')
-		return null
+		return None
 
 	for div in teaser_section.find_all("div"):
 		if (div.find("p")):
@@ -162,13 +196,18 @@ def get_article_text(url):
 	## Second part.
 
 	remainder_div = soup.find("div", {"class": "remainder-content"})
+
+	if (remainder_div is None):
+		print('remain_div is null')
+		return None
+
 	remainder_section = remainder_div.find("section")
 
 	# print (remainder_section)
 
 	if (remainder_section is None):
 		print ('remainder section is null')
-		return null
+		return None
 
 	for div in remainder_section.find_all("div"):
 		if (div.find("p")):
@@ -176,13 +215,9 @@ def get_article_text(url):
 
 	if (paragraphs is None):
 		print ('paragraphs list is blank.')
-		return null
+		return None
 
 	return paragraphs
-
-# (Disclosure: Amazon chief executive Jeff Bezos owns The Washington Post.)
-# (Amazon founder and chief executive Jeff Bezos owns The Washington Post.)
-# (Amazon’s founder, Jeff Bezos, owns The Washington Post.)
 
 """
 	param: paragraphs, list of paragraphs for the article (usually around 35-40)
@@ -197,7 +232,7 @@ def find_note(paragraphs):
 
 	if (paragraphs is None):
 		return ('blank paragraphs supplied to #find_note')
-		return null
+		return None
 
 	## strip punctuation and lowercase.
 	for p in paragraphs:
@@ -209,6 +244,7 @@ def find_note(paragraphs):
 		x = re.search("jeff bezos owns the washington post", lower)
 
 		## its almost always between ()'s, so search for whatevers in that.
+		## search original paragraphs, we want the original form
 		if (x):
 			context = re.search('\(.*?Bezos.*?\)', p)
 			if (context):
@@ -220,29 +256,88 @@ def find_note(paragraphs):
 
 	return 'not found'
 
+"""
+	param: article_dict, struct for article titles and urls
+		calls #get_article_text and #find_note, that scrape text out of url and determine if it contains our interest string.
+		formats the tweet
+	return: tweet_list, list of tweets to send
+
+"""
+
+def get_tweets(article_dict):
+
+	if (article_dict is None):
+		print('empty article dict')
+		return None
+
+	tweet_list = []
+
+	for key, value in article_dict.items():
+
+		# paragraphs of that article
+		paras = get_article_text(value)
+
+		result = find_note(paras)
+			
+		if (result != 'not found'):
+
+			formatted_tweet = result + value
+			tweet_list.append(formatted_tweet)
+
+	return tweet_list
+
+"""
+	param: tweet_list, struct for tweets
+	param: client, twitter client. 
+		uses tweepy#update_status method to post new tweets to timeline
+	return: tweet_count, number of successful posts. 
+
+"""
+
+def send_tweets(tweet_list, client):
+
+	if (tweet_list is None):
+		print ('empty results list')
+		return None
+
+	if (client is None):
+		print ('null twitter client')
+		return None
+
+	tweet_count = 0
+
+	for tweet in tweet_list:
+		# client.update_status(tweet) -- debug mode
+		sleep(0.5)
+		print(tweet)
+		tweet_count +=1
+
+	return tweet_count
+
 if __name__ == "__main__":
 
-	# initialize client 
+	## initialize client 
 	news_client = init_client(s_config.api_key)
 
-	# api call
-	article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-03-30T00:24:52', '2020-03-31T00:24:52', 'publishedAt')
-	# print (article_json)
+	# dates = get_dates()
 
-	# article_dict = get_article_dict(article_json)
+	## api call: happens daily.
+	## article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
+	
+	# catch up call, the past two weeks
+	article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-03-05T20:05:01', '2020-04-02T20:05:00', 'publishedAt')
 
-	# for every url
-	# results = []
-	# for url in article_dict.values():
-		# paragraphs of that article
-	#	paras = get_article_text(url)
-	#	results.append(find_note(paras))
+	## put article title and url into dict 
+	article_dict = get_article_dict(article_json)
+	
+	## send through title and url to parser methods
+	## return our formatted tweets. 
+	tweet_list = get_tweets(article_dict)
 
-	# for every result, check and tweet (or not)
-
+	## init client
 	twitter_client = init_twitter_client(s_config.twitter_api_key, s_config.twitter_secret_key, s_config.twitter_access_token, s_config.twitter_access_secret)
-	tweet = twitter_client.update_status("Flight test")
+	
+	num = send_tweets(tweet_list, twitter_client)
 
-	# api.destroy_status(tweet.id_str)
-
-
+	print (num)
+	
