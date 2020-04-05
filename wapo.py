@@ -338,9 +338,6 @@ if __name__ == "__main__":
 	## return our formatted tweets. 
 	tweet_list = get_tweets(article_dict)
 
-	for i in tweet_list:
-		print(i)
-
 	## init client
 	# twitter_client = init_twitter_client(s_config.twitter_api_key, s_config.twitter_secret_key, s_config.twitter_access_token, s_config.twitter_access_secret)
 
