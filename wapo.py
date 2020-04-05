@@ -176,9 +176,6 @@ def get_article_text(url):
 	sleep(1)
 
 	soup = BeautifulSoup(html, 'lxml')
-
-	with open("output1.html", "w", encoding='utf-8') as file:
-		file.write(str(soup))
   
 	## First part.
 
@@ -219,7 +216,6 @@ def get_article_text(url):
 		if (meta_tag is not None):
 			free = meta_tag['content']
 			if (free is not None):
-				print ('free loader!')
 				return None
 
 	if (paragraphs is None):
@@ -240,7 +236,6 @@ def get_article_text(url):
 def find_note(paragraphs):
 
 	if (paragraphs is None):
-		return ('blank paragraphs supplied to #find_note')
 		return 'not found'
 
 	## strip punctuation and lowercase.
