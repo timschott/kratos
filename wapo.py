@@ -173,45 +173,54 @@ def get_article_text(url):
 	paragraphs = []
 
 	html = urlopen(url)
+	sleep(1)
+
 	soup = BeautifulSoup(html, 'lxml')
 
+	with open("output1.html", "w", encoding='utf-8') as file:
+		file.write(str(soup))
+  
 	## First part.
 
 	teaser_div = soup.find("div", {"class": "teaser-content"})
 
-	if (teaser_div is None):
-		print('teaser div is null')
-		return None
-
-	teaser_section = teaser_div.find("section")
-
-	if (teaser_section is None):
-		print ('teaser section is null')
-		return None
-
-	for div in teaser_section.find_all("div"):
-		if (div.find("p")):
-			paragraphs.append(div.find("p").getText())
+	if (teaser_div is not None):
+		teaser_section = teaser_div.find("section")
+		if (teaser_section is not None):
+			for div in teaser_section.find_all("div"):
+				if (div.find("p")):
+					paragraphs.append(div.find("p").getText())
 
 	## Second part.
 
 	remainder_div = soup.find("div", {"class": "remainder-content"})
 
-	if (remainder_div is None):
-		print('remain_div is null')
-		return None
+	if (remainder_div is not None):
+		remainder_section = remainder_div.find("section")
+		if (remainder_section is not None):
+			for div in remainder_section.find_all("div"):
+				if (div.find("p")):
+					paragraphs.append(div.find("p").getText())
 
-	remainder_section = remainder_div.find("section")
+	## Going out Guide, with amazon callout at the end.
 
-	# print (remainder_section)
+	extra_div = soup.find("div", {"class": "extra"})
 
-	if (remainder_section is None):
-		print ('remainder section is null')
-		return None
+	if (extra_div is not None):
+		if (extra_div.find("p")):
+			paragraphs.append(extra_div.find("p").getText())
 
-	for div in remainder_section.find_all("div"):
-		if (div.find("p")):
-			paragraphs.append(div.find("p").getText())
+
+	## Exclude free covid updates (BS can't parse these)
+
+	if (len(paragraphs) == 0):
+		meta_tag = soup.find("meta", {"property": "article:content_tier"})
+
+		if (meta_tag is not None):
+			free = meta_tag['content']
+			if (free is not None):
+				print ('free loader!')
+				return None
 
 	if (paragraphs is None):
 		print ('paragraphs list is blank.')
@@ -232,7 +241,7 @@ def find_note(paragraphs):
 
 	if (paragraphs is None):
 		return ('blank paragraphs supplied to #find_note')
-		return None
+		return 'not found'
 
 	## strip punctuation and lowercase.
 	for p in paragraphs:
@@ -240,7 +249,7 @@ def find_note(paragraphs):
 		stripped = p.translate(str.maketrans('', '', string.punctuation))
 		lower = stripped.lower()
 
-		## fairly simple regex.
+		## fairly simple regex. can capture things like "Jeff Bezos owns the Washington Post" and "Jeff Bezos is the owner of the Washington Post"
 		x = re.search("jeff bezos(.*)own(.*)washington post", lower)
 
 		## its almost always between ()'s, so search for whatevers in that.
@@ -281,7 +290,7 @@ def get_tweets(article_dict):
 			
 		if (result != 'not found'):
 
-			formatted_tweet = result + value
+			formatted_tweet = result + " " + value
 			tweet_list.append(formatted_tweet)
 
 	return tweet_list
@@ -322,10 +331,10 @@ if __name__ == "__main__":
 	# dates = get_dates()
 
 	## api call: happens daily.
-	## article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
+	# article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
 	
-	# catch up call, the past two weeks
-	article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-03-05T20:05:01', '2020-04-02T20:05:00', 'publishedAt')
+	# test call, for now -- i should go one week at a time. 
+	article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-03-05T20:05:01', '2020-03-12T20:05:00', 'publishedAt')
 
 	## put article title and url into dict 
 	article_dict = get_article_dict(article_json)
@@ -334,10 +343,12 @@ if __name__ == "__main__":
 	## return our formatted tweets. 
 	tweet_list = get_tweets(article_dict)
 
-	## init client
-	twitter_client = init_twitter_client(s_config.twitter_api_key, s_config.twitter_secret_key, s_config.twitter_access_token, s_config.twitter_access_secret)
-	
-	num = send_tweets(tweet_list, twitter_client)
+	for i in tweet_list:
+		print(i)
 
-	print (num)
-	
+	## init client
+	# twitter_client = init_twitter_client(s_config.twitter_api_key, s_config.twitter_secret_key, s_config.twitter_access_token, s_config.twitter_access_secret)
+
+	# send_tweets(tweet_list, twitter_client)
+
+
