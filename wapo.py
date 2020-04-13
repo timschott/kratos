@@ -32,19 +32,36 @@ def env_vars():
 	keys = []
 
 	keys.append(os.environ.get('NEWS_API_KEY'))
-    keys.append(os.environ.get('TWITTER_API_KEY'))
-    keys.append(os.environ.get('TWITTER_BEARER_TOKEN'))
-    keys.append(os.environ.get('TWITTER_SECRET_KEY'))
-    keys.append(os.environ.get('TWITTER_ACCESS_TOKEN'))
-    keys.append(os.environ.get('TWITTER_ACCESS_SECRET'))
+	keys.append(os.environ.get('TWITTER_API_KEY'))
+	keys.append(os.environ.get('TWITTER_BEARER_TOKEN'))
+	keys.append(os.environ.get('TWITTER_SECRET_KEY'))
+	keys.append(os.environ.get('TWITTER_ACCESS_TOKEN'))
+	keys.append(os.environ.get('TWITTER_ACCESS_SECRET'))
 
 	return keys
+
+"""	param: key for news api -- https://newsapi.org
+	initializes news api cleint
+	return: instantiated NewsApiClient. 
+
+"""
 
 def init_client(key):
 	if (key is None):
 		print ('blank news api key')
 		return None
 	return NewsApiClient(api_key = key)
+
+"""	
+	creates a twitter client using the tweepy library - https://www.tweepy.org/.
+	param: api_key - generic twitter api key
+	param: secret_key - twitter secret key
+	param: access_token - twitter access token
+	param: access_secret - twitter access secret
+	intializes twitter client
+	return: client, the authorized twitter client 
+
+"""
 
 def init_twitter_client(api_key, secret_key, access_token, access_secret):
 
@@ -71,10 +88,10 @@ def init_twitter_client(api_key, secret_key, access_token, access_secret):
 	return client
 
 """
-	get todays date and yesterdays date, fomratted for the api call.
-	todays date, at 6:00
-	yesterdays date, at 6:01
-	return list with both dates. 
+	get today's date and yesterday's date, fomratted for the api call.
+	(today's date, at 6:00)
+	(yesterday's date, at 6:01)
+	return: date_list, list with both dates. 
 
 """
 
@@ -373,20 +390,36 @@ def cloud_call(request):
 
 			return 'Sent tweets!'
 
+"""
+	this application is deployed via a Google cloud function, so 
+	this file is meant as a reference for the implementation. in the full
+	version of the file (which I didn't commit) i actually call the #send_tweet method
+
+	the only difference with that file is that the function is triggered from an HTTP request
+	from the google cloud function endpoint
+
+	it runs once daily via a cronjob.
+
+"""
 if __name__ == "__main__":
 
-	debug = False
+	debug = True
 
 	if (debug):
 		news_client = init_client(s_config.api_key)
 
 		dates = get_dates()
 		# plug in date range to debug. 
-		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-03-05T20:05:01', '2020-03-12T20:05:00', 'publishedAt')
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-12T20:05:01', '2020-04-13T20:05:00', 'publishedAt')
+		
+		print (article_json)
+
 		article_dict = get_article_dict(article_json)
+
+		print (article_dict)
+
 		tweet_list = get_tweets(article_dict)
 		for tweet in tweet_list:
 			print(tweet_list)
 	else: 
-
 		print ('local!')
