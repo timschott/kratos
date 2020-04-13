@@ -9,6 +9,7 @@ import string
 
 ## imports.
 import s_config
+import os
 
 ##news api
 from newsapi import NewsApiClient
@@ -25,6 +26,16 @@ from datetime import date, datetime, timedelta
 
 ## schleep
 from time import sleep
+
+def env_vars():
+	keys = []
+	keys.append(os.environ.get('NEWS_API_KEY', 'News api key not set.'))
+    keys.append(os.environ.get('TWITTER_API_KEY', 'Twitter api key not set'))
+    keys.append(os.environ.get('TWITTER_BEARER_TOKEN', 'Twitter bearer token not set'))
+    keys.append(os.environ.get('TWITTER_SECRET_KEY', 'Twitter secret key not set'))
+    keys.append(os.environ.get('TWITTER_ACCESS_TOKEN', 'Twitter access token not set'))
+    keys.append(os.environ.get('TWITTER_ACCESS_SECRET', 'Twitter acess secret not set'))
+    return keys
 
 def init_client(key):
 	if (key is None):
@@ -321,26 +332,51 @@ def send_tweets(tweet_list, client):
 if __name__ == "__main__":
 
 	## initialize client 
-	news_client = init_client(s_config.api_key)
 
-	# dates = get_dates()
+	debug = False
 
-	## api call: happens daily.
-	# article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
+	if (debug):
+		news_client = init_client(s_config.api_key)
+
+		dates = get_dates()
+		# plug in date range to debug. 
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-03-05T20:05:01', '2020-03-12T20:05:00', 'publishedAt')
+		article_dict = get_article_dict(article_json)
+		tweet_list = get_tweets(article_dict)
+		for tweet in tweet_list:
+			print tweet_listt
+
+	else:
+		## load env vars
+		key_array = env_vars()
+
+		## news api creds
+		news_api_key = key_array[0]
+
+		## twitter creds
+		twitter_api_key = key_array[1]
+		twitter_secret_key = key_array[2]
+		twitter_bearer_token = key_array[3]
+		twitter_access_token = key_array[4]
+		twitter_access_secret = key_array[5]
+
+		## init news client
+		news_client = init_client(news_api_key)
+
+		## generate dates
+		dates = get_dates()
+
+		## hit news api for fresh article data.
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
 	
-	# test call, for now -- i should go one week at a time. 
-	article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-03-05T20:05:01', '2020-03-12T20:05:00', 'publishedAt')
-
-	## put article title and url into dict 
-	article_dict = get_article_dict(article_json)
+		## put article title and url into dict 
+		article_dict = get_article_dict(article_json)
 	
-	## send through title and url to parser methods
-	## return our formatted tweets. 
-	tweet_list = get_tweets(article_dict)
+		## send through article vals to parser methods
+		tweet_list = get_tweets(article_dict)
 
-	## init client
-	# twitter_client = init_twitter_client(s_config.twitter_api_key, s_config.twitter_secret_key, s_config.twitter_access_token, s_config.twitter_access_secret)
+		## init twitter client
+		twitter_client = init_twitter_client(twitter_api_key, twitter_secret_key, twitter_access_token, twitter_access_secret)
 
-	# send_tweets(tweet_list, twitter_client)
-
-
+		## publish tweets
+		send_tweets(tweet_list, twitter_client)
