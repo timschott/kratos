@@ -27,15 +27,18 @@ from datetime import date, datetime, timedelta
 ## schleep
 from time import sleep
 
+
 def env_vars():
 	keys = []
-	keys.append(os.environ.get('NEWS_API_KEY', 'News api key not set.'))
-    keys.append(os.environ.get('TWITTER_API_KEY', 'Twitter api key not set'))
-    keys.append(os.environ.get('TWITTER_BEARER_TOKEN', 'Twitter bearer token not set'))
-    keys.append(os.environ.get('TWITTER_SECRET_KEY', 'Twitter secret key not set'))
-    keys.append(os.environ.get('TWITTER_ACCESS_TOKEN', 'Twitter access token not set'))
-    keys.append(os.environ.get('TWITTER_ACCESS_SECRET', 'Twitter acess secret not set'))
-    return keys
+
+	keys.append(os.environ.get('NEWS_API_KEY'))
+    keys.append(os.environ.get('TWITTER_API_KEY'))
+    keys.append(os.environ.get('TWITTER_BEARER_TOKEN'))
+    keys.append(os.environ.get('TWITTER_SECRET_KEY'))
+    keys.append(os.environ.get('TWITTER_ACCESS_TOKEN'))
+    keys.append(os.environ.get('TWITTER_ACCESS_SECRET'))
+
+	return keys
 
 def init_client(key):
 	if (key is None):
@@ -329,25 +332,8 @@ def send_tweets(tweet_list, client):
 
 	return tweet_count
 
-if __name__ == "__main__":
-
-	## initialize client 
-
-	debug = False
-
-	if (debug):
-		news_client = init_client(s_config.api_key)
-
-		dates = get_dates()
-		# plug in date range to debug. 
-		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-03-05T20:05:01', '2020-03-12T20:05:00', 'publishedAt')
-		article_dict = get_article_dict(article_json)
-		tweet_list = get_tweets(article_dict)
-		for tweet in tweet_list:
-			print tweet_listt
-
-	else:
-		## load env vars
+def cloud_call(request):
+	## load env vars
 		key_array = env_vars()
 
 		## news api creds
@@ -375,8 +361,32 @@ if __name__ == "__main__":
 		## send through article vals to parser methods
 		tweet_list = get_tweets(article_dict)
 
-		## init twitter client
-		twitter_client = init_twitter_client(twitter_api_key, twitter_secret_key, twitter_access_token, twitter_access_secret)
+		if (tweet_list is None):
+			return 'Could not send tweets.'
 
-		## publish tweets
-		send_tweets(tweet_list, twitter_client)
+		else:
+			## init twitter client
+			twitter_client = init_twitter_client(twitter_api_key, twitter_secret_key, twitter_access_token, twitter_access_secret)
+
+			## publish tweets
+			send_tweets(tweet_list, twitter_client)
+
+			return 'Sent tweets!'
+
+if __name__ == "__main__":
+
+	debug = False
+
+	if (debug):
+		news_client = init_client(s_config.api_key)
+
+		dates = get_dates()
+		# plug in date range to debug. 
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-03-05T20:05:01', '2020-03-12T20:05:00', 'publishedAt')
+		article_dict = get_article_dict(article_json)
+		tweet_list = get_tweets(article_dict)
+		for tweet in tweet_list:
+			print(tweet_list)
+	else: 
+
+		print ('local!')
