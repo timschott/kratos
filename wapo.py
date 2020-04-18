@@ -276,7 +276,7 @@ def find_note(paragraphs):
 		lower = stripped.lower()
 
 		## fairly simple regex. can capture things like "Jeff Bezos owns the Washington Post" and "Jeff Bezos is the owner of the Washington Post"
-		x = re.search("jeff bezos(.*)own(.*)washington post", lower)
+		x = re.search("jeff bezos(.*)own(.*)post", lower)
 
 		## its almost always between ()'s, so search for whatevers in that.
 		## search original paragraphs, we want the original form
@@ -410,7 +410,7 @@ if __name__ == "__main__":
 
 		dates = get_dates()
 		# plug in date range to debug. 
-		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-12T20:05:01', '2020-04-13T20:05:00', 'publishedAt')
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-15T20:05:01', '2020-04-17T20:05:00', 'publishedAt')
 		
 		print (article_json)
 
