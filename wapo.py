@@ -285,7 +285,15 @@ def find_note(paragraphs):
 			if (context):
 				return context.group(0)
 			else:
-				return p
+				## need to cut the down the parts of the paragraph after Jeff Bezos..
+				## search for Amazon\’s(.*)
+				no_parens = re.search('Amazon\’s(.*)', p)
+				if (no_parens):
+					return no_parens.group(0)
+				else:
+					print('this paragraph has a weird match')
+					print(p)
+					return p
 		else:
 			continue
 
