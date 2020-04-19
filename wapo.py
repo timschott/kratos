@@ -269,6 +269,11 @@ def find_note(paragraphs):
 	if (paragraphs is None):
 		return 'not found'
 
+	print('-------------------------')
+	print('-------------------------')
+	print('-------------------------')
+
+
 	## strip punctuation and lowercase.
 	for p in paragraphs:
 
@@ -281,9 +286,14 @@ def find_note(paragraphs):
 		## its almost always between ()'s, so search for whatevers in that.
 		## search original paragraphs, we want the original form
 		if (x):
-			context = re.search('\(.*?Bezos.*?\)', p)
-			if (context):
-				return context.group(0)
+			parentheticals = re.search('\(([^()]*)\)', p)
+			parens = re.findall(r'\(([^()]*)\)', p)
+
+			for m in parens:
+				if ("Bezos" in m):
+					return '(' + m + ')'
+
+			## Bezos is not used parenthetically
 			else:
 				## need to cut the down the parts of the paragraph after Jeff Bezos..
 				## search for Amazon\’s(.*)
@@ -418,7 +428,7 @@ if __name__ == "__main__":
 
 		dates = get_dates()
 		# plug in date range to debug. 
-		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-15T20:05:01', '2020-04-17T20:05:00', 'publishedAt')
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-17T18:05:01', '2020-04-18T18:05:00', 'publishedAt')
 		
 		print (article_json)
 
