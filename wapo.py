@@ -269,11 +269,6 @@ def find_note(paragraphs):
 	if (paragraphs is None):
 		return 'not found'
 
-	print('-------------------------')
-	print('-------------------------')
-	print('-------------------------')
-
-
 	## strip punctuation and lowercase.
 	for p in paragraphs:
 
@@ -281,33 +276,48 @@ def find_note(paragraphs):
 		lower = stripped.lower()
 
 		## fairly simple regex. can capture things like "Jeff Bezos owns the Washington Post" and "Jeff Bezos is the owner of the Washington Post"
-		x = re.search("jeff bezos(.*)post", lower)
+		x = re.search("bezos(.*)post|post(.*)bezos", lower)
 
-		## its almost always between ()'s, so search for whatevers in that.
 		## search original paragraphs, we want the original form
 		if (x):
+
 			parentheticals = re.search('\(([^()]*)\)', p)
+
 			parens = re.findall(r'\(([^()]*)\)', p)
 
 			for m in parens:
 				if ("Bezos" in m):
 					return '(' + m + ')'
 			
-			amazon_appositive = re.search('(Amazon.*)(\,)(.*)(\,)', p)
+			## not a parenthetical usage. now look for appositve usage. 
+
+			amazon_appositive = re.search('(Amazon.*)(\,)(.*Bezos)(\,)(.*Post)', p)
+
 			if (amazon_appositive):
-				print (amazon_appositive.group(1))
-				return amazon_appositive.group(1) + "..."
+				print ('appositive match')
+				# print (amazon_appositive.group(0))
+				return amazon_appositive.group(0) + "..."
 
 			else:
+
 				## need to cut the down the parts of the paragraph after Jeff Bezos..
 				## search for Amazon\’s(.*)
-				no_parens = re.search('Amazon\’s(.*)', p)
-				if (no_parens):
-					return no_parens.group(0)
+				possessive = re.search('(Amazon\’s)(.*)(Bezos)(\,)(.*)(.*Post)', p)
+				if (possessive):
+					print ('possessive match')
+					return possessive.group(0) + '...'
+
 				else:
-					print('this paragraph has a weird match')
-					print(p)
-					return p
+					## maybe they use the passive voice for it. Lol!
+					reverse = re.search('The(.*)Post(.*)Bezos')
+					if (reverse):
+						print ('reverse match')
+						return reverse.group(0)
+
+					else: 
+						print('this paragraph has a weird match')
+						print(p)
+						return p
 		else:
 			continue
 
@@ -432,16 +442,18 @@ if __name__ == "__main__":
 
 		dates = get_dates()
 		# plug in date range to debug. 
-		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-22T18:05:01', '2020-04-23T18:05:00', 'publishedAt')
-		
-		print (article_json)
+		#article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-23T18:05:01', '2020-04-24T18:05:00', 'publishedAt')
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-24T00:05:01', '2020-04-24T23:55:00', 'publishedAt')
+
+		# print (article_json)
 
 		article_dict = get_article_dict(article_json)
 
 		print (article_dict)
 
+		# print ('---------------------------------------')
+
 		tweet_list = get_tweets(article_dict)
-		for tweet in tweet_list:
-			print(tweet_list)
+
 	else: 
 		print ('local!')
