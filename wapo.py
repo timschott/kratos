@@ -291,15 +291,13 @@ def find_note(paragraphs):
 			
 			## not a parenthetical usage. now look for appositve usage. 
 
-			amazon_appositive = re.search('(Amazon.*)(\,)(.*Bezos)(\,)(.*Post)', p)
+			amazon_appositive = re.search('(Amazon[^\\.]*)(\,)(.*Bezos)(\,)(.*Post)', p)
 
 			if (amazon_appositive):
 				print ('appositive match')
-				# print (amazon_appositive.group(0))
 				return amazon_appositive.group(0) + "..."
 
 			else:
-
 				## need to cut the down the parts of the paragraph after Jeff Bezos..
 				## search for Amazon\’s(.*)
 				possessive = re.search('(Amazon\’s)(.*)(Bezos)(\,)(.*)(.*Post)', p)
@@ -309,13 +307,14 @@ def find_note(paragraphs):
 
 				else:
 					## maybe they use the passive voice for it. Lol!
-					reverse = re.search('The(.*)Post(.*)Bezos')
+					reverse = re.search('The(.*?)Post(.*?)Bezos(.*?)Amazon[\.\,]', p)
 					if (reverse):
 						print ('reverse match')
+						print (reverse.group(0))
 						return reverse.group(0)
 
 					else: 
-						print('this paragraph has a weird match')
+						print('this paragraph has a long match im too lazy to look for')
 						print(p)
 						return p
 		else:
@@ -443,7 +442,7 @@ if __name__ == "__main__":
 		dates = get_dates()
 		# plug in date range to debug. 
 		#article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-23T18:05:01', '2020-04-24T18:05:00', 'publishedAt')
-		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-24T00:05:01', '2020-04-24T23:55:00', 'publishedAt')
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-27T00:05:01', '2020-04-27T23:55:00', 'publishedAt')
 
 		# print (article_json)
 
