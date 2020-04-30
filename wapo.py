@@ -306,17 +306,24 @@ def find_note(paragraphs):
 					return possessive.group(0) + '...'
 
 				else:
-					## maybe they use the passive voice for it. Lol!
-					reverse = re.search('The(.*?)Post(.*?)Bezos(.*?)Amazon[\.\,]', p)
-					if (reverse):
-						print ('reverse match')
-						print (reverse.group(0))
-						return reverse.group(0)
+					## straight up, Amazon founder and chief exec. Jeff Bezos owns the washington post. 
+					no_punctuation = re.search('(Amazon .*?Bezos.*?Post)', p)
+					if (no_punctuation):
+						print('no punctuation match')
+						return no_punctuation.group(0)
+					else:	
+						## maybe they use the passive voice for it. Lol!
+						reverse = re.search('The(.*?)Post(.*?)Bezos(.*?)Amazon[\.\,]', p)
+						
+						if (reverse):
+							print ('reverse match')
+							print (reverse.group(0))
+							return reverse.group(0)
 
-					else: 
-						print('this paragraph has a long match im too lazy to look for')
-						print(p)
-						return p
+						else: 
+							print('this paragraph has a long match im too lazy to look for')
+							print(p)
+							return p
 		else:
 			continue
 
@@ -442,7 +449,7 @@ if __name__ == "__main__":
 		dates = get_dates()
 		# plug in date range to debug. 
 		#article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-23T18:05:01', '2020-04-24T18:05:00', 'publishedAt')
-		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-27T00:05:01', '2020-04-27T23:55:00', 'publishedAt')
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-28T18:05:01', '2020-04-29T18:55:00', 'publishedAt')
 
 		# print (article_json)
 
