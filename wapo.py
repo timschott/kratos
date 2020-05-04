@@ -321,9 +321,16 @@ def find_note(paragraphs):
 							return reverse.group(0)
 
 						else: 
-							print('this paragraph has a long match im too lazy to look for')
-							print(p)
-							return p
+							postlast = re.search('Jeff Bezos(.*?)Post', p)
+
+							if (postlast):
+								print ('post last')
+								print (postlast.group(0))
+								return postlast.group(0)
+							else:	
+								print('this paragraph has a long match im too lazy to look for')
+								print(p)
+								return p
 		else:
 			continue
 
@@ -449,7 +456,7 @@ if __name__ == "__main__":
 		dates = get_dates()
 		# plug in date range to debug. 
 		#article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-23T18:05:01', '2020-04-24T18:05:00', 'publishedAt')
-		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-28T18:05:01', '2020-04-29T18:55:00', 'publishedAt')
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-05-02T18:05:01', '2020-05-03T18:55:00', 'publishedAt')
 
 		# print (article_json)
 
