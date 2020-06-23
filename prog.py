@@ -39,6 +39,12 @@ def init_twitter_client(api_key, secret_key, access_token, access_secret):
 
 	return client
 
+def read_tweets(twitter_client, username):
+
+	## need to paginate.
+	for status in tweepy.Cursor(twitter_client.user_timeline, '@bigschottt').items():       
+		print(status)
+
 if __name__ == "__main__":
 
 	key_array = env_vars()
@@ -53,6 +59,8 @@ if __name__ == "__main__":
 	twitter_client = init_twitter_client(twitter_api_key, twitter_secret_key, twitter_access_token, twitter_access_secret)
 
 	## use `user_timeline` and wild out. 
+
+	print(read_tweets(twitter_client, '@tschott'))
 
 
 
