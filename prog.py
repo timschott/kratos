@@ -82,6 +82,35 @@ def read_tweets(twitter_client, username):
 
 	return tweet_list
 
+'''
+	returns x number of top tweets sorted by rts and favs
+'''
+def aggregate_tweets(tweet_list, limit):
+	if (tweet_list is None):
+		return 'empty tweet list'
+
+	sorted_list = sorted(tweet_list, key=lambda x: (x[2], x[1]), reverse=True)
+
+	sorted_list = sorted_list[0:limit]
+
+	agg = []
+
+	for tweet in sorted_list:
+		text = tweet[0]
+		id = str(tweet[3])
+		rt = str(tweet[1])
+		fav = str(tweet[2])
+		date = str(tweet[5])
+		stats = []
+		stats.append(text)
+		stats.append(rt)
+		stats.append(fav)
+		stats.append(date)
+		stats.append(id)
+		agg.append('|'.join(stats))
+
+	return agg
+
 if __name__ == "__main__":
 
 	key_array = env_vars()
@@ -108,41 +137,15 @@ if __name__ == "__main__":
 	print(len(sorted_mcgrath_list))
 	print(len(sorted_booker_list))
 
-	mcgrath_top_5 = sorted_mcgrath_list[0:5]
-	booker_top_5 = sorted_booker_list[0:5]
-
 	print("amy's tweets.")
-	for tweet in mcgrath_top_5:
-		rt = str(tweet[1]) + ' rt'
-		fav = str(tweet[2]) + ' fav'
-		date = str(tweet[5]) + ' date'
-		stats = []
-		stats.append(rt)
-		stats.append(fav)
-		stats.append(date)
-		print(' | '.join(stats))
+	mcgrath_agg = aggregate_tweets(mcgrath_tweets, 5)
+	booker_agg = aggregate_tweets(booker_tweets, 5)
 
-	print("booker's tweets")
-	for tweet in booker_top_5:
-		rt = str(tweet[1]) + ' rt'
-		fav = str(tweet[2]) + ' fav'
-		date = str(tweet[5]) + ' date'
-		stats = []
-		stats.append(rt)
-		stats.append(fav)
-		stats.append(date)
-		print(' | '.join(stats))
+	print(mcgrath_agg[1])
 
+	## can we get the full text of a tweet, using beautiful soup and just requesting that ID?
 
+	## can we look at search results and see who is hot. 
 
-
-
-
-
-
-
-
-
-
-
+	
 
