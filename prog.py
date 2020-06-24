@@ -8,6 +8,9 @@ import tweepy
 ## date
 from datetime import datetime, date, time, timedelta
 
+## csv
+import csv
+
 def env_vars():
 	keys = []
 
@@ -38,7 +41,7 @@ def init_twitter_client(api_key, secret_key, access_token, access_secret):
 
 	auth = tweepy.OAuthHandler(api_key, secret_key)
 	auth.set_access_token(access_token, access_secret)
-	client = tweepy.API(auth)
+	client = tweepy.API(auth, wait_on_rate_limit=True)
 
 	return client
 
@@ -97,9 +100,9 @@ def aggregate_tweets(tweet_list, limit):
 
 	for tweet in sorted_list:
 		text = tweet[0]
-		id = str(tweet[3])
 		rt = str(tweet[1])
 		fav = str(tweet[2])
+		id = str(tweet[3])
 		date = str(tweet[5])
 		stats = []
 		stats.append(text)
@@ -110,6 +113,42 @@ def aggregate_tweets(tweet_list, limit):
 		agg.append('|'.join(stats))
 
 	return agg
+
+def search_tweets(twitter_client, query, start_date, end_date):
+	tweet_list = []
+	tweet_count = 0
+	
+	for status in tweepy.Cursor(twitter_client.search, q=query, result_type="recent",lang="en", tweet_mode="extended", since = start_date, until=end_date).items(0):
+		tweet = []
+
+		if (status.full_text[0:4] == "RT @"):
+			continue
+
+		tweet.append(status.user.screen_name)
+		tweet.append(status.retweet_count)
+		tweet.append(status.favorite_count)
+		tweet.append(status.full_text.replace('\n', ''))
+		tweet.append(str(status.created_at))
+
+		tweet_list.append(tweet)
+
+		tweet_count+=1
+		if (tweet_count > 100):
+			break
+
+	sorted_list = sorted(tweet_list, key=lambda x: (x[2], x[1]), reverse=True)
+
+	print('processed this many tweets', tweet_count)
+	
+	return sorted_list
+
+def write_csv(tweets, filename):
+
+	with open(filename+'.csv','w') as result_file:
+		wr = csv.writer(result_file, dialect='excel')
+		for item in tweets:
+			wr.writerow([item[0], item[1], item[2], item[3], item[4]])
+	return 'wrote csv'
 
 if __name__ == "__main__":
 
@@ -128,6 +167,7 @@ if __name__ == "__main__":
 
 	# print('booker is this big of a poster ' + str(len(booker_tweets)))
 
+	'''
 	booker_tweets =read_tweets(twitter_client, '@Booker4KY')
 	mcgrath_tweets =read_tweets(twitter_client, '@AmyMcGrathKY')
 
@@ -135,8 +175,13 @@ if __name__ == "__main__":
 	booker_agg = aggregate_tweets(booker_tweets, 5)
 
 	print(mcgrath_agg[1])
+	'''
 
 	## can we look at search results and see who is hot. 
+	start_date = '2020-06-21'
+	end_date = '2020-06-22'
 
+	booker_dossier = search_tweets(twitter_client, "charles booker|Charles Booker", start_date, end_date)
+	write_csv(booker_dossier, 'bookertest')
 
 
