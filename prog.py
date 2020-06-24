@@ -46,10 +46,15 @@ def read_tweets(twitter_client, username):
 
 	## need to paginate. artificially? 
 	tweet_count = 0
-	end_date = datetime.utcnow() - timedelta(days=1)
+
+	start_date = datetime.utcnow() - timedelta(days=1, hours=9)
+	end_date = datetime.utcnow() - timedelta(days=50)
 	tweet_list = []
+
 	for status in tweepy.Cursor(twitter_client.user_timeline, username).items():
 		tweet = []
+		if status.created_at > start_date:
+			continue	
 		tweet.append(status.text)
 		tweet.append(status.retweet_count)
 		tweet.append(status.favorite_count)
@@ -63,15 +68,17 @@ def read_tweets(twitter_client, username):
 		else:
 			tweet.append('nt')
 
+		tweet.append(status.created_at)
+
 		tweet_list.append(tweet)
 
-	## if i really want the full text i can grab the id. 
+		## if i really want the full text i can grab the id. 
 		tweet_count+=1
 		# if (tweet_count > 2):
 		#	break
 
 		if status.created_at < end_date:
-			break	
+			break
 
 	return tweet_list
 
@@ -91,10 +98,40 @@ if __name__ == "__main__":
 	## use `user_timeline` and wild out. 
 
 	# print('booker is this big of a poster ' + str(len(booker_tweets)))
-	# mcgrath_tweets =read_tweets(twitter_client, '@AmyMcGrathKY')
-	# print('mcgrath is this big of a poster ' + str(len(mcgrath_tweets)))
 
+	booker_tweets =read_tweets(twitter_client, '@Booker4KY')
+	mcgrath_tweets =read_tweets(twitter_client, '@AmyMcGrathKY')
 
+	sorted_mcgrath_list = sorted(mcgrath_tweets, key=lambda x: (x[2], x[1]), reverse=True)
+	sorted_booker_list = sorted(booker_tweets, key=lambda x: (x[2], x[1]), reverse=True)
+
+	print(len(sorted_mcgrath_list))
+	print(len(sorted_booker_list))
+
+	mcgrath_top_5 = sorted_mcgrath_list[0:5]
+	booker_top_5 = sorted_booker_list[0:5]
+
+	print("amy's tweets.")
+	for tweet in mcgrath_top_5:
+		rt = str(tweet[1]) + ' rt'
+		fav = str(tweet[2]) + ' fav'
+		date = str(tweet[5]) + ' date'
+		stats = []
+		stats.append(rt)
+		stats.append(fav)
+		stats.append(date)
+		print(' | '.join(stats))
+
+	print("booker's tweets")
+	for tweet in booker_top_5:
+		rt = str(tweet[1]) + ' rt'
+		fav = str(tweet[2]) + ' fav'
+		date = str(tweet[5]) + ' date'
+		stats = []
+		stats.append(rt)
+		stats.append(fav)
+		stats.append(date)
+		print(' | '.join(stats))
 
 
 
