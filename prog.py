@@ -51,16 +51,16 @@ def read_tweets(twitter_client, username):
 	end_date = datetime.utcnow() - timedelta(days=50)
 	tweet_list = []
 
-	for status in tweepy.Cursor(twitter_client.user_timeline, username).items():
+	for status in tweepy.Cursor(twitter_client.user_timeline, username, tweet_mode="extended").items():
 		tweet = []
 		if status.created_at > start_date:
 			continue	
-		tweet.append(status.text)
+		tweet.append(status.full_text)
 		tweet.append(status.retweet_count)
 		tweet.append(status.favorite_count)
 		tweet.append(status.id)
 
-		text = status.text
+		text = status.full_text
 		if ("https://t.co/" in text):
 			tweet.append('qt')
 		elif (text[0:4] == "RT @"):
@@ -131,21 +131,12 @@ if __name__ == "__main__":
 	booker_tweets =read_tweets(twitter_client, '@Booker4KY')
 	mcgrath_tweets =read_tweets(twitter_client, '@AmyMcGrathKY')
 
-	sorted_mcgrath_list = sorted(mcgrath_tweets, key=lambda x: (x[2], x[1]), reverse=True)
-	sorted_booker_list = sorted(booker_tweets, key=lambda x: (x[2], x[1]), reverse=True)
-
-	print(len(sorted_mcgrath_list))
-	print(len(sorted_booker_list))
-
-	print("amy's tweets.")
 	mcgrath_agg = aggregate_tweets(mcgrath_tweets, 5)
 	booker_agg = aggregate_tweets(booker_tweets, 5)
 
 	print(mcgrath_agg[1])
 
-	## can we get the full text of a tweet, using beautiful soup and just requesting that ID?
-
 	## can we look at search results and see who is hot. 
 
-	
+
 
