@@ -5,6 +5,9 @@ import os
 ## twitter clent
 import tweepy
 
+## date
+from datetime import datetime, date, time, timedelta
+
 def env_vars():
 	keys = []
 
@@ -41,9 +44,36 @@ def init_twitter_client(api_key, secret_key, access_token, access_secret):
 
 def read_tweets(twitter_client, username):
 
-	## need to paginate.
-	for status in tweepy.Cursor(twitter_client.user_timeline, '@bigschottt').items():       
-		print(status)
+	## need to paginate. artificially? 
+	tweet_count = 0
+	end_date = datetime.utcnow() - timedelta(days=1)
+	tweet_list = []
+	for status in tweepy.Cursor(twitter_client.user_timeline, username).items():
+		tweet = []
+		tweet.append(status.text)
+		tweet.append(status.retweet_count)
+		tweet.append(status.favorite_count)
+		tweet.append(status.id)
+
+		text = status.text
+		if ("https://t.co/" in text):
+			tweet.append('qt')
+		elif (text[0:4] == "RT @"):
+			tweet.append('rt')
+		else:
+			tweet.append('nt')
+
+		tweet_list.append(tweet)
+
+	## if i really want the full text i can grab the id. 
+		tweet_count+=1
+		# if (tweet_count > 2):
+		#	break
+
+		if status.created_at < end_date:
+			break	
+
+	return tweet_list
 
 if __name__ == "__main__":
 
@@ -60,7 +90,22 @@ if __name__ == "__main__":
 
 	## use `user_timeline` and wild out. 
 
-	print(read_tweets(twitter_client, '@tschott'))
+	# print('booker is this big of a poster ' + str(len(booker_tweets)))
+	# mcgrath_tweets =read_tweets(twitter_client, '@AmyMcGrathKY')
+	# print('mcgrath is this big of a poster ' + str(len(mcgrath_tweets)))
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
