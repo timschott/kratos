@@ -11,6 +11,9 @@ from datetime import datetime, date, time, timedelta
 ## csv
 import csv
 
+## schleep
+from time import sleep
+
 def env_vars():
 	keys = []
 
@@ -116,25 +119,40 @@ def aggregate_tweets(tweet_list, limit):
 
 def search_tweets(twitter_client, query, start_date, end_date):
 	tweet_list = []
-	tweet_count = 0
+	tweet_count = 1
+
+	print ('lets search.')
+	sleep(5)
 	
-	for status in tweepy.Cursor(twitter_client.search, q=query, result_type="recent",lang="en", tweet_mode="extended", since = start_date, until=end_date).items(0):
+	for status in tweepy.Cursor(twitter_client.search, q=query, result_type="recent",lang="en", tweet_mode="extended", since = start_date, until=end_date).items():
 		tweet = []
 
+		## some sort of cutoff to make this go faster
+		# if (status.retweet_count < 10 or status.favorite_count < 10):
+		# 	continue
+
+		## don't care about retweets
 		if (status.full_text[0:4] == "RT @"):
 			continue
+
+		if (tweet_count > 100 and tweet_count % 100 == 0):
+			print('processed ' + str(tweet_count) + ' tweets')
 
 		tweet.append(status.user.screen_name)
 		tweet.append(status.retweet_count)
 		tweet.append(status.favorite_count)
-		tweet.append(status.full_text.replace('\n', ''))
+		## replace new lines, not really important
+		tweet.append(status.full_text.replace('\n', ' '))
 		tweet.append(str(status.created_at))
+		tweet.append(status.id)
 
 		tweet_list.append(tweet)
 
 		tweet_count+=1
-		if (tweet_count > 100):
+
+		if (tweet_count > 1000):
 			break
+		sleep(5)
 
 	sorted_list = sorted(tweet_list, key=lambda x: (x[2], x[1]), reverse=True)
 
@@ -178,10 +196,17 @@ if __name__ == "__main__":
 	'''
 
 	## can we look at search results and see who is hot. 
-	start_date = '2020-06-21'
-	end_date = '2020-06-22'
+	start_date = '2020-06-19'
+	end_date = '2020-06-20'
 
+	## this search picks up a quote tweet of a
+	## news article that mentions "Booker" in the lede caption 
+	## eg https://twitter.com/BlackBernieBabe/status/1274849294101680129?s=20
+	## this is very helpful because it pulls in a very germane tweet
+	## that doesn't directly mention Booker. 
 	booker_dossier = search_tweets(twitter_client, "charles booker|Charles Booker", start_date, end_date)
-	write_csv(booker_dossier, 'bookertest')
+	write_csv(booker_dossier, 'booker_buzz_19and20')
 
+	mcgrath_dossier = search_tweets(twitter_client, "amy mcgrath|Amy McGrath", start_date, end_date)
+	write_csv(mcgrath_dossier, 'mcgrath_buzz19and20')
 
