@@ -97,12 +97,21 @@ def init_twitter_client(api_key, secret_key, access_token, access_secret):
 
 def get_dates():
 
-	today = datetime.today().strftime('%Y-%m-%d')
-	yesterday = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+	## present time
+	present = datetime.now()
+
+	## 6 hours prior. 
+	previous = present - timedelta(hours=6)
+
+	x = present.strftime('%Y-%m-%d%H:%M:%S')
+	y = previous.strftime('%Y-%m-%d%H:%M:%S')
+
+	pres_formatted = x[0:10] + 'T' + x[10:18]
+	prev_formatted = y[0:10] + 'T' + y[10:18]
 
 	date_list = []
-	date_list.append(today + 'T18:00:00') 
-	date_list.append(yesterday + 'T18:01:00')
+	date_list.append(pres_formatted) 
+	date_list.append(prev_formatted)
 
 	return date_list
 
@@ -454,19 +463,21 @@ if __name__ == "__main__":
 		news_client = init_client(s_config.api_key)
 
 		dates = get_dates()
+		for date in dates:
+			print(date)
 		# plug in date range to debug. 
 		#article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-04-23T18:05:01', '2020-04-24T18:05:00', 'publishedAt')
-		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-05-02T18:05:01', '2020-05-03T18:55:00', 'publishedAt')
+		#article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-06-01T18:05:01', '2020-06-03T18:55:00', 'publishedAt')
 
 		# print (article_json)
 
-		article_dict = get_article_dict(article_json)
+		#article_dict = get_article_dict(article_json)
 
-		print (article_dict)
+		#print (article_dict)
 
 		# print ('---------------------------------------')
 
-		tweet_list = get_tweets(article_dict)
+		#tweet_list = get_tweets(article_dict)
 
 	else: 
 		print ('local!')
