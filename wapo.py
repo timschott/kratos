@@ -101,7 +101,7 @@ def get_dates():
 	present = datetime.now() - timedelta(hours=4)
 
 	## 6 hours prior. 
-	previous = present - timedelta(hours=10)
+	previous = present - timedelta(hours=5)
 
 	x = present.strftime('%Y-%m-%d%H:%M:%S')
 	y = previous.strftime('%Y-%m-%d%H:%M:%S')
