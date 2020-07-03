@@ -101,7 +101,7 @@ def get_dates():
 	present = datetime.now() - timedelta(hours=4)
 
 	## 6 hours prior. 
-	previous = present - timedelta(hours=5)
+	previous = present - timedelta(hours=20)
 
 	x = present.strftime('%Y-%m-%d%H:%M:%S')
 	y = previous.strftime('%Y-%m-%d%H:%M:%S')
@@ -201,6 +201,7 @@ def get_article_dict(article_json):
 		i think this approach is preferable to relying on the news api's search because its
 		more transparent and i can continually update the regex should the disclaimer ever change.
 		plus if i want to do things like print out the context of the disclaimer, i have all the paras.
+		this method continues to grow as i find new DOM structures across the Post's different web silos.
 
 """
 
@@ -247,6 +248,13 @@ def get_article_text(url):
 		if (extra_div.find("p")):
 			paragraphs.append(extra_div.find("p").getText())
 
+	## Interactives (with a "/graphics/" permalink)
+
+	graphics_div = soup.find("div", {"class": "story relative"})
+	if (graphics_div is not None):
+		print ('graph on me')
+		for para in graphics_div.find_all("p"):
+			paragraphs.append(para.getText())
 
 	## Exclude free covid updates (BS can't parse these)
 
@@ -365,7 +373,6 @@ def get_tweets(article_dict):
 
 		# paragraphs of that article
 		paras = get_article_text(value)
-
 		result = find_note(paras)
 			
 		if (result != 'not found'):
@@ -466,19 +473,18 @@ if __name__ == "__main__":
 		for date in dates:
 			print('date', date)
 		# plug in date range to debug. 
-		print('api call', api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt'))
 		article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
 		#article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-06-01T18:05:01', '2020-06-03T18:55:00', 'publishedAt')
 
 		print (article_json)
 
-		#article_dict = get_article_dict(article_json)
+		article_dict = get_article_dict(article_json)
 
-		#print (article_dict)
+		print (article_dict)
 
-		# print ('---------------------------------------')
+		print ('---------------------------------------')
 
-		#tweet_list = get_tweets(article_dict)
+		tweet_list = get_tweets(article_dict)
 
 	else: 
 		print ('local!')
