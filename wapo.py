@@ -27,6 +27,11 @@ from datetime import date, datetime, timedelta
 ## schleep
 from time import sleep
 
+## mails
+import yagmail
+
+import smtplib, ssl
+
 
 def env_vars():
 	keys = []
@@ -451,6 +456,27 @@ def cloud_call(request):
 
 			return 'Sent tweets!'
 
+def send_email(email_password, sender, receiver, article_dict, tweet_list):
+	port = 465  
+	password = email_password
+	context = ssl.create_default_context()
+
+	links = []
+	for key in article_dict.keys():
+		links.append(key)
+
+	big_list = links + tweet_list
+
+	concat = (';'.join())
+
+	full = "We have a disparity: " + concat
+
+	formatted_message = 'Subject: {}\n\n{}'.format("Cron Alert!", full)
+
+	with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
+		server.login(sender, password)
+		server.sendmail(sender, receiver, formatted_message)
+
 """
 	this application is deployed via a Google cloud function, so 
 	this file is meant as a reference for the implementation. in the full
@@ -473,18 +499,20 @@ if __name__ == "__main__":
 		for date in dates:
 			print('date', date)
 		# plug in date range to debug. 
-		article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
+		# article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
 		#article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-06-01T18:05:01', '2020-06-03T18:55:00', 'publishedAt')
 
-		print (article_json)
+		# print (article_json)
 
-		article_dict = get_article_dict(article_json)
+		# article_dict = get_article_dict(article_json)
 
-		print (article_dict)
+		# print (article_dict)
 
-		print ('---------------------------------------')
+		# print ('---------------------------------------')
 
-		tweet_list = get_tweets(article_dict)
+		# tweet_list = get_tweets(article_dict)
 
+		## where are the emails ???
+		print ("ok")
 	else: 
 		print ('local!')
