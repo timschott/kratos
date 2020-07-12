@@ -7,79 +7,102 @@ import re
 from nltk import tokenize
 
 '''
-	reads in case files. could be configured to sweep through every sub directory.
+	reads in case files, separated into paragraphs. could be configured to sweep through every sub directory.
 '''
 def read_data(directory):
 	info = []
 	for filename in os.listdir(directory):
 		with open(os.path.join(directory, filename), 'r') as f: # open in readonly mode
-			info.append(f.read())
+			info.append(f.readlines())
 	return info
 
 '''
 	removes some basic dead weight from the cases
-	and split it into a list of lists case = list of its sentneces. 
+	returns a list of all the sentences from the cases in case_list. 
 '''
 def clean_and_normalize_data(case_list, stopwords):
 
-	cleaned_cases = []
-	for case in case_list:
-		## remove stuff
-		case = re.sub('[0-9]+', '', case)
-		case = re.sub('&amp;', '', case)
-		case = re.sub('\\.US\\._', '', case)
-		case = re.sub('\\*(.*)\\*(.*)\\*', '', case)
-		case = re.sub('[§]+', '', case)
-		case = re.sub('Mr. Justice [A-Z]+', '', case)
-		case = re.sub('CHIEF JUSTICE [A-Z]+', '', case)
-		case = re.sub('\n\n', '', case)
-
-		case = case.strip()
-
-		# split into sentences 
-		sentences = tokenize.sent_tokenize(case)
-		new_sents = []
-
-		for sent in sentences:
-			for start in re.findall('(?<!.\s)[A-Z][a-z]+', sent):
-				# lower case the first word of each sentence
-				s = sent.replace(start, start.lower())
-				# then remove proper nouns
-				s = re.sub('[A-Z][a-z]+', '', s)
-				# and straggling abbrev's.
-				s = re.sub('[A-Z]', '', s)
-				punc = len(re.findall('\.|\,|\;|\:', s))
-				w = len(re.findall('[\w-]+', s))
+	sentence_list = []
+	for raw_case in case_list:
+		for paragraph in raw_case:
+			## numbers	
+			paragraph = re.sub('[0-9]+', '', paragraph)
+			## amps from xml
+			paragraph = re.sub('&amp;', '', paragraph)
+			## some u s print
+			paragraph = re.sub('\\.US\\._|U\\. S\\.|S\\. C\\.|L\\. ed\\.|Sup\\.|', '', paragraph)
+			## stars
+			paragraph = re.sub('\\*(.*)\\*(.*)\\*', '', paragraph)
+			## sections
+			paragraph = re.sub('[§]+', '', paragraph)
+			## justice names
+			paragraph = re.sub('Mr. Justice [A-Z]+', '', paragraph)
+			paragraph = re.sub('CHIEF JUSTICE [A-Z]+', '', paragraph)
+			## no new lines 
+			paragraph = re.sub('\\n|\\n\\n', '', paragraph)
+			paragraph = paragraph.strip()
+			## filter empties
+			if (paragraph == '' or paragraph == '.'):
+				continue
+			## lowercase first word in each paragraph
+			## "If repl is a function, it is called for every non-overlapping occurrence of pattern.""
+			## https://docs.python.org/3/library/re.html
+			## so replacement is called on that match. handy!
+			paragraph = re.sub('(?<!.)[A-Z][a-z]+', replacement, paragraph) 
+			## lowercase whole thing
+			paragraph = re.sub('[A-Z][a-z]+', '', paragraph)
+			## straggling abbrevs
+			paragraph = re.sub('[A-Z]', '', paragraph)
+			## empty parens
+			paragraph = re.sub('\\(\\)', '', paragraph)
+			## citation artifacts
+			paragraph = re.sub('v\\.', '', paragraph)
+			## more artifications
+			paragraph = re.sub('v\\.\\W{2,}|\\,\\W{2,}|\\. \\. \\.', '', paragraph)
+			## et al
+			paragraph = re.sub('et al\\.', '', paragraph)
+			## more arficats 
+			paragraph = re.sub('\\. \\.| \\. \\.  \\.', '', paragraph)
+			## parties 
+			paragraph = re.sub("\\s's\\s", "", paragraph)
+			## floating comma
+			paragraph = re.sub(' , ', '', paragraph)
+			## empty quote
+			paragraph = re.sub("\\s'\\s'", '', paragraph)
+			## empty quote
+			paragraph = re.sub("\\s'\\s", '', paragraph)
+			## c. c).
+			paragraph = re.sub('c\\.|c\\)\\.', '', paragraph)
+			## vs
+			paragraph = re.sub('\\svs\\s', '', paragraph)
+			## extra spaces
+			paragraph = re.sub(' +', ' ', paragraph)
+			## split into sentences
+			sentences = paragraph.split('.')
+			for sentence in sentences:
+				## filter sentences. 
+				punctuation_count = len(re.findall('\\.|\\,|\\;|\\:', sentence))
+				word_count = len(re.findall('[\\w-]+', sentence))
 				# condition 1: if there is more punctuation in a sentence than words
 				# condition 2: if there are less than 5 words in a sentence
-				if (punc > w or w < 5):
+				if (punctuation_count > word_count or word_count < 5):
 					continue
-				# remove punctuation
-				s = re.sub('\.|\,|\;|\:', '', s)
-				# get rid of extra spaces between words
-				s = ' '.join(s.split())
-				# split up the sentence
-				split_sentence = s.split()
-				# remove stop words 
-				output = [w for w in split_sentence if not w in stopwords]
-				# join the output (a list of words) back into a string
-				clean_sentence = ' '.join(output)
-				# add cleaned sentence to container
-				new_sents.append(clean_sentence)
+				sentence = sentence.strip()
+				sentence_list.append(sentence)
 
-		# add cleaned lines to case container
-		cleaned_cases.append(new_sents)
+	return sentence_list
 
-	return cleaned_cases
-
+def replacement(match):
+	return match.group(0).lower()
 
 if __name__ == '__main__':
 
-	# where my files live
+	## where my files live
 	path = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/text/federal/SC/1910s'
-	# read data
+	## read data
 	files = read_data(path)
-
+	
+	## stopworks from nltk
 	stopwords = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", 
 	"yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", 
 	"it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", 
@@ -88,8 +111,11 @@ if __name__ == '__main__':
 	"with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", 
 	"out", "on", "off", "over", "under", "again", "further", "th", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", 
 	"each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", 
-	"will", "just", "don", "should", "now", '\n\n', '']
-	# clean data
-	cleaned_cases = clean_and_normalize_data(files, stopwords)
-    
+	"will", "just", "don", "should", "now"]
+
+	## for now, not using stop words, will play around with that later. 
+	sentences = clean_and_normalize_data(files, stopwords)
+
+	## going to implement the next set of functions at the *sentence* level
+  
 	
