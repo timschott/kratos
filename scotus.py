@@ -16,9 +16,33 @@ def read_data(directory):
 			info.append(f.readlines())
 	return info
 
+def justice_list(filename):
+	dataframe = pd.read_csv(filename, encoding= 'unicode_escape')
+	justices = dataframe.justiceName.unique()
+	clean_justices = []
+	## do a little cleaning
+	## return the last name, all caps. 
+	for justice in justices:
+		## John Marshall Harlan (1899–1971)
+		if justice == 'JHarlan2':
+			justice = 'HARLAN'
+		## I have no cases after 2005 so these new-ish justices are out. (BKavanaugh is not even in this dataframe).
+		elif justice in ('SAAlito', 'SSotomayor', 'EKagan', 'NMGorsuch'):
+			continue
+		else:
+			if (is_upper(justice) == 2):
+				justice = justice[1:]
+			else:
+				justice = justice[2:]
+
+		clean_justices.append(justice.upper())
+
+	return clean_justices
+
 '''
 	removes some basic dead weight from the cases
-	returns a list of all the sentences from the cases in case_list. 
+	returns a list of all the sentences from the cases in case_list
+	does not respect per-justice setup. 
 '''
 def clean_and_normalize_data(case_list, stopwords):
 
@@ -45,7 +69,7 @@ def clean_and_normalize_data(case_list, stopwords):
 			if (paragraph == '' or paragraph == '.'):
 				continue
 			## lowercase first word in each paragraph
-			## "If repl is a function, it is called for every non-overlapping occurrence of pattern.""
+			## "If second arg is a function, it is called for every non-overlapping occurrence of pattern.""
 			## https://docs.python.org/3/library/re.html
 			## so replacement is called on that match. handy!
 			paragraph = re.sub('(?<!.)[A-Z][a-z]+', replacement, paragraph) 
@@ -92,13 +116,16 @@ def clean_and_normalize_data(case_list, stopwords):
 
 	return sentence_list
 
+def is_upper(string):
+	return sum(1 for c in string if c.isupper())
+
 def replacement(match):
 	return match.group(0).lower()
 
 if __name__ == '__main__':
 
 	## where my files live
-	path = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/text/federal/SC/1910s'
+	path = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/text/federal/SC/1950s'
 	## read data
 	files = read_data(path)
 	
@@ -114,8 +141,24 @@ if __name__ == '__main__':
 	"will", "just", "don", "should", "now"]
 
 	## for now, not using stop words, will play around with that later. 
-	sentences = clean_and_normalize_data(files, stopwords)
+	# sentences = clean_and_normalize_data(files, stopwords)
 
 	## going to implement the next set of functions at the *sentence* level
+	## because that's how word2vec splits up units of study. 
+
+	## writing a function to pull out a list of who was on the court between 50 and 05.
+
+	justices = justice_list('voteList.csv')
+	
+
+
+
+
+
+
+
+
+
+
   
 	
