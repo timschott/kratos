@@ -1,9 +1,17 @@
+# for csvs and dfs
 import numpy as np
-import os
 import pandas as pd
 
+# read files 
+import os
+
+# munging
 import re
 
+# XML
+import xml.etree.ElementTree as ET
+
+# baseline for comparison. note: this function is quite useless. 
 from nltk import tokenize
 
 '''
@@ -15,6 +23,15 @@ def read_data(directory):
 		with open(os.path.join(directory, filename), 'r') as f: # open in readonly mode
 			info.append(f.readlines())
 	return info
+
+def read_xml(directory):
+	roots = []
+	for filename in os.listdir(directory):
+		if not filename.endswith('.xml'): 
+			continue
+		fullname = os.path.join(directory, filename)
+		roots.append(ET.parse(fullname))
+	return roots
 
 def justice_list(filename):
 	dataframe = pd.read_csv(filename, encoding= 'unicode_escape')
@@ -115,9 +132,69 @@ def clean_and_normalize_data(case_list, stopwords):
 				sentence_list.append(sentence)
 
 	return sentence_list
+ 
+## weird situation -- if "CHIEF JUSTICE" is first in line... we have to know 
+## who that person is at that moment in time.......
+def extract_justice_speak_from_xml(case_list, justice_dict):
+	# list with 33 spots. 
+	justices_output = [None] * 33
+	for case in case_list:
+		## track down what justices speak in that particular case.
+		## then slide that input within the appropriate index of justices_output.
+		## get the body. 
+		## body is the third child of the root. 
+		root = case.getroot()
+		## recall how xml works
+		## <USCase id="523.US.574" date="1998-05-04">
+		print(root.attrib)
+		## the tag is USCase; 
+		## it has a dictionary of attributes (id & date) that have values.
+		body = root.find("body")
+		for div in body:
+			paragraphs = div.findall("p")
+			for p in paragraphs:
+				## a well formed, <p n="x" type="author">
+				if ('author' in p.attrib.values() and 'x' in p.attrib.values()):
+					print("AUTHOR")
+					## make sure it has a n = "x" value. 
+					## the author is the first capitalized 
+					primary_author = re.sub('\\.|\\,|\\;|\\:', '', first_upper(p.text))
+					primary_list = primary_author.split(' ')
+					if (len(primary_list) > 1):
+						print("something weird happpened")
+						print(primary_list)
+
+					## we have encountered a chief justice.
+					if (len(primary_author) > 1 and 'THE' in primary_author):
+						print("fuck")
+					## base case; should be able to handle. 
+					else:
+						print(primary_author)
+				## ideally, a <p n="23">
+				## but could be a fake paragraph. 
+				else:
+					## try to detect if we have a FRANKFURTER (capital justice name) first in the paragraph alongside the word dissenting or concurring.
+					first_fully_upper = re.sub('\\.|\\,|\\;|\\:', '', first_upper(p.text))
+					possible = first_fully_upper.split(' ')
+					if len(possible) > 1 or possible[0] not in justice_dict.keys():
+						continue
+					else:
+						floating_justice = possible[0]
+						pattern = floating_justice + ', concurring' + '|' + floating_justice + ', dissenting'
+						if (len(re.findall(pattern, p.text))):
+							print('siren!!!!!!')
+							print(p.text)
+						## search for floating_justice, dissenting|concurring
+
+					
+		break
+	return 'done'
 
 def is_upper(string):
 	return sum(1 for c in string if c.isupper())
+
+def first_upper(string):
+	return next((word for word in string.split() if word.isupper()), string)
 
 def replacement(match):
 	return match.group(0).lower()
@@ -127,7 +204,7 @@ if __name__ == '__main__':
 	## where my files live
 	path = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/text/federal/SC/1950s'
 	## read data
-	files = read_data(path)
+	## files = read_data(path)
 	
 	## stopworks from nltk
 	stopwords = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", 
@@ -147,9 +224,33 @@ if __name__ == '__main__':
 	## because that's how word2vec splits up units of study. 
 
 	## writing a function to pull out a list of who was on the court between 50 and 05.
-
 	justices = justice_list('voteList.csv')
+	## create a dict of this i.e. ({'BURTON': 1, 'JACKSON': 2,...})
+	counts = list(range(1,34))
+	justices_dict = dict(zip(justices, counts))
+	xml_path = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1950s'
 	
+	## root objects. 
+	xml_files = read_xml(xml_path)
+
+	print(extract_justice_speak_from_xml(xml_files, justices_dict))
+
+	## write a function to treat each justice as a novel; fill up w/ their dictums. 
+	## the .txt files don't have any author data baked in, but the xml does.
+	## any text in the <body> that's contained in an author tag. 
+	## <p n="x" type="author">Justice STEVENS delivered the opinion of the Court.</p>
+	## <p n="x" type="author">Justice KENNEDY, concurring.</p>
+	## <p n="x" type="author">Chief Justice REHNQUIST, with whom Justice O'CONNOR joins, dissenting.</p>
+	## if justices join, throw them out. (ie keep first name to appear in the list). 
+	## end goal of this will be a list of lists, each spot containing one justice.
+	## i don't think the association of what case it is matters....
+	## except for perhaps verification? but for the most part, having them just
+	## by what documents they contributed to should be enough.
+	## could very easily do tf-idf, things like that on this data prior to
+	## running it through an advanced pipeilne. 
+
+
+
 
 
 
