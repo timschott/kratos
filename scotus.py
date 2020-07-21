@@ -138,7 +138,6 @@ def clean_and_normalize_data(case_list, stopwords):
 def extract_justice_speak_from_xml(case_list, justice_dict):
 	# list with 33 spots. 
 	justices_output = [None] * 33
-	punc_pattern = '\\.|\\,|\\;|\\:'
 	for case in case_list:
 		## track down what justices speak in that particular case.
 		## then slide that input within the appropriate index of justices_output.
