@@ -56,8 +56,8 @@ def read_tweets(twitter_client, username):
 	## need to paginate. artificially? 
 	tweet_count = 0
 
-	start_date = datetime.utcnow() - timedelta(days=3, hours=9)
-	end_date = datetime.utcnow() - timedelta(days=53, hours=9)
+	start_date = datetime.utcnow() - timedelta(days=4, hours=9)
+	end_date = datetime.utcnow() - timedelta(days=54, hours=9)
 	tweet_list = []
 
 	for status in tweepy.Cursor(twitter_client.user_timeline, username, tweet_mode="extended").items():
@@ -248,34 +248,46 @@ if __name__ == "__main__":
 	booker_tweets =read_tweets(twitter_client, '@Booker4KY')
 	mcgrath_tweets =read_tweets(twitter_client, '@AmyMcGrathKY')
 
-	booker_agg = aggregate_tweets(booker_tweets, 10)
-	mcgrath_agg = aggregate_tweets(mcgrath_tweets, 10)
+	# booker_agg = aggregate_tweets(booker_tweets, 10)
+	# mcgrath_agg = aggregate_tweets(mcgrath_tweets, 10)
 
 	bowman_tweets =read_tweets(twitter_client, '@JamaalBowmanNY')
 	engel_tweets =read_tweets(twitter_client, '@RepEliotEngel')
 
-	bowman_agg = aggregate_tweets(bowman_tweets, 10)
-	engel_agg = aggregate_tweets(engel_tweets, 10)
+	# bowman_agg = aggregate_tweets(bowman_tweets, 10)
+	# engel_agg = aggregate_tweets(engel_tweets, 10)
 
-	columns = ['text', 'retweets', 'favorites', 'date']
+	# columns = ['text', 'retweets', 'favorites', 'date']
 
-	booker_df = pd.DataFrame(booker_agg, columns=columns)
-	mcgrath_df = pd.DataFrame(mcgrath_agg, columns=columns)
+	# booker_df = pd.DataFrame(booker_agg, columns=columns)
+	# mcgrath_df = pd.DataFrame(mcgrath_agg, columns=columns)
 
-	bowman_df = pd.DataFrame(bowman_agg, columns=columns)
-	engel_df = pd.DataFrame(engel_agg, columns=columns)
+	# bowman_df = pd.DataFrame(bowman_agg, columns=columns)
+	# engel_df = pd.DataFrame(engel_agg, columns=columns)
 
 	## try this html func. 
 
-	write_to_html_file(bowman_df, "Jamaal Bowman's Top 10 Tweets", 'bowman.html')
-	write_to_html_file(engel_df, "Eliot Engel's Top 10 Tweets", 'engel.html')
+	# write_to_html_file(bowman_df, "Jamaal Bowman's Top 10 Tweets", 'bowman.html')
+	# write_to_html_file(engel_df, "Eliot Engel's Top 10 Tweets", 'engel.html')
 
-	write_to_html_file(booker_df, "Charles Booker's Top 10 Tweets", 'booker.html')
-	write_to_html_file(mcgrath_df, "Amy McGrath's Top 10 Tweets", 'mcgrath.html')
+	# write_to_html_file(booker_df, "Charles Booker's Top 10 Tweets", 'booker.html')
+	# write_to_html_file(mcgrath_df, "Amy McGrath's Top 10 Tweets", 'mcgrath.html')
 
-	
-	## make a data frame?
-	
+
+	columns = ['text', 'retweets', 'favorites', 'id', 'type', 'date']
+	booker_full_df = pd.DataFrame(booker_tweets, columns=columns)
+	booker_full_df.to_csv('booker_tweets.csv', index=False)
+
+	bowman_full_df = pd.DataFrame(bowman_tweets, columns=columns)
+	bowman_full_df.to_csv('bowman_tweets.csv', index=False)
+
+	engel_full_df = pd.DataFrame(engel_tweets, columns=columns)
+	engel_full_df.to_csv('engel_tweets.csv', index=False)
+
+	mcgrath_full_df = pd.DataFrame(mcgrath_tweets, columns=columns)
+	mcgrath_full_df.to_csv('mcgrath_tweets.csv', index=False)
+
+	print('all - done.')
 
 	## can we look at search results and see who is hot. 
 
@@ -294,4 +306,7 @@ if __name__ == "__main__":
 	mcgrath_dossier = search_tweets(twitter_client, "amy mcgrath|Amy McGrath", start_date, end_date)
 	write_csv(mcgrath_dossier, 'mcgrath_buzz19and20')
 	'''
+
+
+
 
