@@ -138,6 +138,7 @@ def clean_and_normalize_data(case_list, stopwords):
 def extract_justice_speak_from_xml(case_list, justice_dict):
 	# list with 33 spots. 
 	justices_output = [None] * 33
+	all_authors = []
 	for case in case_list:
 		## track down what justices speak in that particular case.
 		## then slide that input within the appropriate index of justices_output.
@@ -146,49 +147,62 @@ def extract_justice_speak_from_xml(case_list, justice_dict):
 		root = case.getroot()
 		## recall how xml works
 		## <USCase id="523.US.574" date="1998-05-04">
-		print(root.attrib)
+		print('processing...', root.attrib.get('id'))
 		## the tag is USCase; 
 		## it has a dictionary of attributes (id & date) that have values.
 		body = root.find("body")
+		authors = []
 		for div in body:
 			paragraphs = div.findall("p")
 			for p in paragraphs:
 				## a well formed, <p n="x" type="author">
+				## make sure it has a n ="x" value and type="author" value. 
 				if ('author' in p.attrib.values() and 'x' in p.attrib.values()):
-					print("AUTHOR")
-					## make sure it has a n = "x" value. 
-					## the author is the first capitalized 
+					## the author ought to be the first capitalized word. 
 					primary_author = re.sub('\\.|\\,|\\;|\\:', '', first_upper(p.text))
 					primary_list = primary_author.split(' ')
+
+					## if there is no entirely capitalized word, there's a formatting issue in this paragraph.	
 					if (len(primary_list) > 1):
 						print("something weird happpened")
 						print(primary_list)
 
 					## we have encountered a chief justice.
 					if (len(primary_author) > 1 and 'THE' in primary_author):
+						## todo
 						print("fuck")
-					## base case; should be able to handle. 
+
+					## base case; should be able to handle (should make sure they're in the dict.)
 					else:
-						print(primary_author)
-				## ideally, a <p n="23">
-				## but could be a fake paragraph. 
+						if (primary_author in justice_dict):
+							authors.append(primary_author)
+				## ideally, a run of the mill <p n="23">The text goes here.</p>
+				## but could be a fake paragraph... 
 				else:
-					## try to detect if we have a FRANKFURTER (capital justice name) first in the paragraph alongside the word dissenting or concurring.
+					## try to detect if we have a FRANKFURTER (capital justice name) first in the paragraph
+					## alongside the word dissenting or concurring.
 					first_fully_upper = re.sub('\\.|\\,|\\;|\\:', '', first_upper(p.text))
 					possible = first_fully_upper.split(' ')
+					## if this list is greater than 1 in size it's a full sentence.
+					## or, if this list is some other random word like U.S., we also don't care.
 					if len(possible) > 1 or possible[0] not in justice_dict.keys():
 						continue
 					else:
+						## we have a loose justice. 
 						floating_justice = possible[0]
+						## search to make sure they are participating. 
 						pattern = floating_justice + ', concurring' + '|' + floating_justice + ', dissenting'
-						if (len(re.findall(pattern, p.text))):
-							print('siren!!!!!!')
-							print(p.text)
-						## search for floating_justice, dissenting|concurring
-
-					
+						result = re.search(pattern, p.text)
+						if (result):
+							## we don't care what they're doing, just want to track their participation.
+							authors.append(floating_justice)
+						else:
+							print('funky.')
+		## need to tweak this, but good POC.
+		all_authors.append(authors)						
 		break
-	return 'done'
+
+	return all_authors
 
 def is_upper(string):
 	return sum(1 for c in string if c.isupper())
@@ -233,7 +247,9 @@ if __name__ == '__main__':
 	## root objects. 
 	xml_files = read_xml(xml_path)
 
-	print(extract_justice_speak_from_xml(xml_files, justices_dict))
+	authors = extract_justice_speak_from_xml(xml_files, justices_dict)
+	for a in authors:
+		print(a)
 
 	## write a function to treat each justice as a novel; fill up w/ their dictums. 
 	## the .txt files don't have any author data baked in, but the xml does.
