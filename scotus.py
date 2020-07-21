@@ -146,8 +146,8 @@ def clean_and_normalize_data(case_list, stopwords):
 	return sentence_list
  
 def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
-	# list with 33 spots. 
-	justices_output = [None] * 33
+	# list of 33 empty lists.
+	justices_output = [[] for i in range(33)]
 	for case in case_list:
 		## track down what justices speak in that particular case.
 		## then slide that input within the appropriate index of justices_output.
@@ -167,18 +167,25 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 		for div in body:
 			paragraphs = div.findall("p")
 			for p in paragraphs:
+				## going to help us down the road.
+
+				text = justice_sub(p.text)
+
 				## add either the author or text of a paragraph to this list each time.
 				content_bucket = []
+				if text == 'continue':
+					continue
 				## to prevent tracking useless front matter e.g.
 				## <p n="x">Amicus Curiae Information from page 307 intentionally omitted</p>
 				## case0: (skip)
-				if ('author' not in p.attrib.values() and 'x' in p.attrib.values()):
+				elif ('author' not in p.attrib.values() and 'x' in p.attrib.values()):
 					continue
+				## case0.5: (skip)
 				## case1: a well formed, <p n="x" type="author">
 				## make sure it has a n ="x" value and type="author" value. 
 				elif ('author' in p.attrib.values() and 'x' in p.attrib.values()):
 					## the author ought to be the first capitalized word. 
-					primary_author = re.sub('\\.|\\,|\\;|\\:', '', first_upper(p.text))
+					primary_author = re.sub('\\.|\\,|\\;|\\:', '', first_upper(text))
 					primary_list = primary_author.split(' ')
 
 					## if there is no entirely capitalized word, there's a formatting issue in this paragraph.	
@@ -188,7 +195,6 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 
 					## we have encountered a chief justice.
 					if (len(primary_author) > 1 and 'THE' in primary_author):
-						## todo, match making
 						content_bucket.append(chief)
 
 					## base case; should be able to handle (should make sure they're in the dict.)
@@ -200,36 +206,35 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 				## but could be a fake paragraph...
 				## evaluates to true if it is legitimately text.
 				## case 2:
-				elif conditional_helper(p.text, justice_dict):
-					content_bucket.append(re.sub('\n    ', ' ', p.text))
+				elif conditional_helper(text, justice_dict):
+					content_bucket.append(re.sub('\n    ', ' ', text))
 				## try to detect if we have capital justice name first in the paragraph
 				## alongside the word dissenting or concurring.
 				## case3: 
+				elif conditional_helper_2(text, justice_dict) != 'not found':
+					content_bucket.append(conditional_helper_2(text, justice_dict))
 				else:
-					first_fully_upper = re.sub('\\.|\\,|\\;|\\:', '', first_upper(p.text))
-					possible = first_fully_upper.split(' ')
-					## we have a loose justice. 
-					floating_justice = possible[0]
-					## search to make sure they are participating. 
-					pattern = floating_justice + ', concurring' + '|' + floating_justice + ', dissenting'
-					result = re.search(pattern, p.text)
-					if (result):
-						## we don't care what they're doing, just want to track their participation.
-						content_bucket.append(floating_justice)
-					else:
-						print('funky.')
+					## probably just a note that they weren't participating or they had nothing to say. who care!
+					continue
 
 				if (len(content_bucket) > 0):
 					case_container.append(content_bucket)
 
 		## need to tweak this, but good POC.
-		## then we do some look up stuff once we have content bucket. 
 		## for i in content:
 		## if all caps, find that in the dict and pop into the big list of lists, ... 
 		## do stuff.
-		break
+		author = ""
+		for block in case_container:
+			## we have reached an author marker
+			if (is_upper(block[0]) == len(block[0]) or author  == ""):
+				author = block[0]
+			## find their spot in the array, and add the proceeding pragraphs to it
+			else:
+				author_value = justice_dict[author]
+				justices_output[author_value].append(block)
 
-	return case_container
+	return case_container, justices_output
 
 '''
 	counts the number of uppercase letters in a string
@@ -241,13 +246,27 @@ def is_upper(string):
 	returns first fully-uppercase word in a sentence, or the sentence itself if nothing found
 '''
 def first_upper(string):
-	return next((word for word in string.split() if word.isupper()), string)
+	if (string is not None):
+		return next((word for word in string.split() if word.isupper()), string)
 
 '''
 	lowercases the regex results
 '''
 def replacement(match):
 	return match.group(0).lower()
+
+'''
+	gentle preprocessing
+'''
+def justice_sub(string):
+	if (string is None):
+		return 'continue'
+	else:
+		mr = re.sub('MR. JUSTICE', 'Mr. Justice', string)
+		ms = re.sub('MS. JUSTICE', 'Ms. Justice', mr)
+		breaks = re.sub('\n', ' ', ms)
+		spaces = re.sub(' +', ' ', breaks)
+		return spaces
 
 '''
 	helper method for case 2
@@ -259,6 +278,27 @@ def conditional_helper(string, justice_dict):
 	## or if it is a normal sentence.
 	if (len(first_fully_upper) == 1 or len(first_fully_upper.split(' ')) > 1 or first_fully_upper.split(' ')[0] not in justice_dict):
 		return True
+
+def conditional_helper_2(text, justice_dict):
+	first_fully_upper = re.sub('\\.|\\,|\\;|\\:', '', first_upper(text))
+	possible = first_fully_upper.split(' ')
+	## we have a loose justice. 
+	floating_justice = possible[0].strip()
+	## search to make sure they are participating. 
+	## we want to match:
+	## Mr. Justice BRENNAN, with whom THE CHIEF JUSTICE, Mr. Justice BLACK and Mr. Justice DOUGLAS join, dissenting.
+	## Mr. Justice MINTON, with whom Mr. Justice REED joins, dissenting.
+	## but we do not want to match:
+	## I disagree with Mr. Justice SCALIA's dissent.
+	## Mr. Justice MINTON joins in so much of this opinion as applies to Emspak v. United  States.
+	## they are quite consistent in using a gerund to identify someone that's going to start writing
+
+	pattern = 'M(.*)Justice ' + floating_justice + ', (.*)concur|M(.*)Justice ' + floating_justice + ', (.*)dissent'
+	result = re.search(pattern, text)
+	if (result):
+		return floating_justice
+	else:
+		return 'not found'
 
 if __name__ == '__main__':
 
@@ -289,14 +329,16 @@ if __name__ == '__main__':
 	## writing a function to pull out a list of who was on the court between 50 and 05.
 	justices, chief_justices_dict = generate_justice_data('voteList.csv')
 	## list(dict) returns the keys. 
-	print(list(chief_justices_dict)[1:10])
+	## print(list(chief_justices_dict)[1:10])
 
 	## print position (key) and output (value) for every element in the dict (well, first 10)
 	## print({k: chief_justices_dict[k] for k in list(chief_justices_dict)[:10]})
 
 	## create a dict of this i.e. ({'BURTON': 1, 'JACKSON': 2,...})
-	counts = list(range(1,34))
+	counts = list(range(0,33))
 	justices_dict = dict(zip(justices, counts))
+	iv_justices_dict = {v: k for k, v in justices_dict.items()}
+	## print(justices_dict['GINSBURG'])
 	xml_path = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1950s'
 	
 	## root objects. 
@@ -304,7 +346,7 @@ if __name__ == '__main__':
 
 	## write a function to treat each justice as a novel; fill up w/ their dictums. 
 	## the .txt files don't have any author data baked in, but the xml does.
-	## any text in the <body> that's contained in an author tag. 
+	## any text in the <body> that's contained between an author's tag. 
 	## <p n="x" type="author">Justice STEVENS delivered the opinion of the Court.</p>
 	## <p n="x" type="author">Justice KENNEDY, concurring.</p>
 	## <p n="x" type="author">Chief Justice REHNQUIST, with whom Justice O'CONNOR joins, dissenting.</p>
@@ -318,8 +360,13 @@ if __name__ == '__main__':
 
 	## we need to reduce chief justices to only match for the cases in our corpus.
 	## quick dict lookup in the method takes care of that, no culling needed
-	stuff= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
-	print(len(stuff))
+	stuff, cont= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
+	# print(len(stuff))
+	# print(len(cont))
+	for i in range(len(cont)):
+		print(iv_justices_dict[i], len(cont[i]))
+		if (i == 10):
+			print(cont[i])
 	## ['ginsburg', 'para1', 'para2'; 'other guy', 'para3', 'para4']
 
 
