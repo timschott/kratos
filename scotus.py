@@ -10,6 +10,7 @@ import re
 
 # XML
 import xml.etree.ElementTree as ET
+from lxml.etree import fromstring
 
 # baseline for comparison. note: this function is quite useless. 
 from nltk import tokenize
@@ -27,10 +28,16 @@ def read_data(directory):
 def read_xml(directory):
 	roots = []
 	for filename in os.listdir(directory):
+		# don't read in .DS_store
 		if not filename.endswith('.xml'): 
 			continue
 		fullname = os.path.join(directory, filename)
-		roots.append(ET.parse(fullname))
+		xmlstring = open(fullname, 'r').read()
+		## get rid of interrupting characs. 
+		no_italics = re.sub('<i>|<\\/i>', '', xmlstring)
+		no_ref = re.sub('<ref(.*)\\/>', '', no_italics)
+		## parse it from string and turn it into a tree.
+		roots.append(ET.ElementTree(ET.fromstring(no_ref)))
 	return roots
 
 '''
@@ -156,7 +163,11 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 		print('processing...', root.attrib.get('id'))
 		## who was chief:
 
-		chief = chief_dict[root.attrib.get('id')]
+		if (root.attrib.get('id') not in chief_dict):
+			print('bad', root.attrib.get('id'))
+			continue
+		else:
+			chief = chief_dict[root.attrib.get('id')]
 		## recall how xml works
 		## the tag is USCase; 
 		## <USCase id="523.US.574" date="1998-05-04">
@@ -166,11 +177,10 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 		case_container = []
 		for div in body:
 			paragraphs = div.findall("p")
-			for p in paragraphs:
+			for p in list(paragraphs):
 				## going to help us down the road.
-
 				text = justice_sub(p.text)
-
+				print('p.text after sub ', text)
 				## add either the author or text of a paragraph to this list each time.
 				content_bucket = []
 				if text == 'continue':
@@ -200,14 +210,14 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 					## base case; should be able to handle (should make sure they're in the dict.)
 					else:
 						if (primary_author in justice_dict):
-							# authors.append(primary_author)
+							print(primary_author)
 							content_bucket.append(primary_author)
 				## ideally, run of the mill <p n="23">The text goes here.</p>
 				## but could be a fake paragraph...
 				## evaluates to true if it is legitimately text.
 				## case 2:
 				elif conditional_helper(text, justice_dict):
-					content_bucket.append(re.sub('\n    ', ' ', text))
+					content_bucket.append(text)
 				## try to detect if we have capital justice name first in the paragraph
 				## alongside the word dissenting or concurring.
 				## case3: 
@@ -220,12 +230,12 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 				if (len(content_bucket) > 0):
 					case_container.append(content_bucket)
 
-		## need to tweak this, but good POC.
 		## for i in content:
 		## if all caps, find that in the dict and pop into the big list of lists, ... 
 		## do stuff.
 		author = ""
 		for block in case_container:
+			print(block)
 			## we have reached an author marker
 			if (is_upper(block[0]) == len(block[0]) or author  == ""):
 				author = block[0]
@@ -272,6 +282,7 @@ def justice_sub(string):
 	helper method for case 2
 '''
 def conditional_helper(string, justice_dict):
+
 	first_fully_upper = re.sub('\\.|\\,|\\;|\\:', '', first_upper(string))
 	## we don't care if it's a random capitalized letter like A
 	## or some abbreviation like U.S.A.
@@ -332,17 +343,18 @@ if __name__ == '__main__':
 	## print(list(chief_justices_dict)[1:10])
 
 	## print position (key) and output (value) for every element in the dict (well, first 10)
-	## print({k: chief_justices_dict[k] for k in list(chief_justices_dict)[:10]})
+	## print({k: chief_justices_dict[k] for k in list(chief_justices_dict)[:100]})
 
 	## create a dict of this i.e. ({'BURTON': 1, 'JACKSON': 2,...})
 	counts = list(range(0,33))
 	justices_dict = dict(zip(justices, counts))
 	iv_justices_dict = {v: k for k, v in justices_dict.items()}
 	## print(justices_dict['GINSBURG'])
-	xml_path = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1950s'
+	## let's go big......???
+	xml_path = '/Users/tim/Desktop/tmp_case'
 	
 	## root objects. 
-	xml_files = read_xml(xml_path)
+	xml_files = clean_xml(xml_path)
 
 	## write a function to treat each justice as a novel; fill up w/ their dictums. 
 	## the .txt files don't have any author data baked in, but the xml does.
@@ -363,13 +375,9 @@ if __name__ == '__main__':
 	stuff, cont= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
 	# print(len(stuff))
 	# print(len(cont))
-	for i in range(len(cont)):
-		print(iv_justices_dict[i], len(cont[i]))
-		if (i == 10):
-			print(cont[i])
+	# for i in range(len(cont)):
+	# 	print(iv_justices_dict[i], len(cont[i]))
 	## ['ginsburg', 'para1', 'para2'; 'other guy', 'para3', 'para4']
-
-
 
 
 
