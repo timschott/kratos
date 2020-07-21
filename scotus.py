@@ -33,12 +33,17 @@ def read_xml(directory):
 		roots.append(ET.parse(fullname))
 	return roots
 
-def justice_list(filename):
+'''
+	extracts the justices names in order of their tenure
+	also returns a dict of case id's + chief justices to track who was presiding when
+'''
+def generate_justice_data(filename):
 	dataframe = pd.read_csv(filename, encoding= 'unicode_escape')
 	justices = dataframe.justiceName.unique()
 	clean_justices = []
 	## do a little cleaning
 	## return the last name, all caps. 
+
 	for justice in justices:
 		## John Marshall Harlan (1899–1971)
 		if justice == 'JHarlan2':
@@ -54,7 +59,14 @@ def justice_list(filename):
 
 		clean_justices.append(justice.upper())
 
-	return clean_justices
+	## return the justice list
+	## as well as a dict containing the case id (in the format 329.US.29)
+	## and the chief justice at the time (uppercased)
+	return clean_justices, dict(zip(dataframe.usCite
+		.str.replace(' +', '', regex=True)
+		.str.replace('U.S.', '.US.', regex=True),
+		dataframe.chief.apply(lambda x: x.upper())))
+
 
 '''
 	removes some basic dead weight from the cases
@@ -133,34 +145,36 @@ def clean_and_normalize_data(case_list, stopwords):
 
 	return sentence_list
  
-## weird situation -- if "CHIEF JUSTICE" is first in line... we have to know 
-## who that person is at that moment in time.......
-def extract_justice_speak_from_xml(case_list, justice_dict):
+def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 	# list with 33 spots. 
 	justices_output = [None] * 33
 	for case in case_list:
 		## track down what justices speak in that particular case.
 		## then slide that input within the appropriate index of justices_output.
-		## get the body. 
-		## body is the third child of the root. 
+		## get the root
 		root = case.getroot()
-		## recall how xml works
-		## <USCase id="523.US.574" date="1998-05-04">
 		print('processing...', root.attrib.get('id'))
+		## who was chief:
+
+		chief = chief_dict[root.attrib.get('id')]
+		## recall how xml works
 		## the tag is USCase; 
+		## <USCase id="523.US.574" date="1998-05-04">
 		## it has a dictionary of attributes (id & date) that have values.
 		body = root.find("body")
-		authors = []
+		## per case container 
 		case_container = []
 		for div in body:
 			paragraphs = div.findall("p")
 			for p in paragraphs:
+				## add either the author or text of a paragraph to this list each time.
 				content_bucket = []
-				## just in case there is some front matter e.g.
+				## to prevent tracking useless front matter e.g.
 				## <p n="x">Amicus Curiae Information from page 307 intentionally omitted</p>
+				## case0: (skip)
 				if ('author' not in p.attrib.values() and 'x' in p.attrib.values()):
 					continue
-				## a well formed, <p n="x" type="author">
+				## case1: a well formed, <p n="x" type="author">
 				## make sure it has a n ="x" value and type="author" value. 
 				elif ('author' in p.attrib.values() and 'x' in p.attrib.values()):
 					## the author ought to be the first capitalized word. 
@@ -175,7 +189,7 @@ def extract_justice_speak_from_xml(case_list, justice_dict):
 					## we have encountered a chief justice.
 					if (len(primary_author) > 1 and 'THE' in primary_author):
 						## todo, match making
-						print("fuck")
+						content_bucket.append(chief)
 
 					## base case; should be able to handle (should make sure they're in the dict.)
 					else:
@@ -185,11 +199,13 @@ def extract_justice_speak_from_xml(case_list, justice_dict):
 				## ideally, run of the mill <p n="23">The text goes here.</p>
 				## but could be a fake paragraph...
 				## evaluates to true if it is legitimately text.
+				## case 2:
 				elif conditional_helper(p.text, justice_dict):
 					content_bucket.append(re.sub('\n    ', ' ', p.text))
+				## try to detect if we have capital justice name first in the paragraph
+				## alongside the word dissenting or concurring.
+				## case3: 
 				else:
-					## try to detect if we have capital justice name first in the paragraph
-					## alongside the word dissenting or concurring.
 					first_fully_upper = re.sub('\\.|\\,|\\;|\\:', '', first_upper(p.text))
 					possible = first_fully_upper.split(' ')
 					## we have a loose justice. 
@@ -210,19 +226,32 @@ def extract_justice_speak_from_xml(case_list, justice_dict):
 		## then we do some look up stuff once we have content bucket. 
 		## for i in content:
 		## if all caps, find that in the dict and pop into the big list of lists, ... 
+		## do stuff.
 		break
 
 	return case_container
 
+'''
+	counts the number of uppercase letters in a string
+'''
 def is_upper(string):
 	return sum(1 for c in string if c.isupper())
 
+''' 
+	returns first fully-uppercase word in a sentence, or the sentence itself if nothing found
+'''
 def first_upper(string):
 	return next((word for word in string.split() if word.isupper()), string)
 
+'''
+	lowercases the regex results
+'''
 def replacement(match):
 	return match.group(0).lower()
 
+'''
+	helper method for case 2
+'''
 def conditional_helper(string, justice_dict):
 	first_fully_upper = re.sub('\\.|\\,|\\;|\\:', '', first_upper(string))
 	## we don't care if it's a random capitalized letter like A
@@ -233,12 +262,14 @@ def conditional_helper(string, justice_dict):
 
 if __name__ == '__main__':
 
-	## where my files live
+	## where files live
 	path = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/text/federal/SC/1950s'
 	## read data
 	## files = read_data(path)
 	
 	## stopworks from nltk
+	## for now, not using stop words, will play around with that later. 
+	'''
 	stopwords = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", 
 	"yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", 
 	"it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", 
@@ -248,15 +279,21 @@ if __name__ == '__main__':
 	"out", "on", "off", "over", "under", "again", "further", "th", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", 
 	"each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", 
 	"will", "just", "don", "should", "now"]
+	'''
 
-	## for now, not using stop words, will play around with that later. 
 	# sentences = clean_and_normalize_data(files, stopwords)
 
 	## going to implement the next set of functions at the *sentence* level
 	## because that's how word2vec splits up units of study. 
 
 	## writing a function to pull out a list of who was on the court between 50 and 05.
-	justices = justice_list('voteList.csv')
+	justices, chief_justices_dict = generate_justice_data('voteList.csv')
+	## list(dict) returns the keys. 
+	print(list(chief_justices_dict)[1:10])
+
+	## print position (key) and output (value) for every element in the dict (well, first 10)
+	## print({k: chief_justices_dict[k] for k in list(chief_justices_dict)[:10]})
+
 	## create a dict of this i.e. ({'BURTON': 1, 'JACKSON': 2,...})
 	counts = list(range(1,34))
 	justices_dict = dict(zip(justices, counts))
@@ -264,14 +301,6 @@ if __name__ == '__main__':
 	
 	## root objects. 
 	xml_files = read_xml(xml_path)
-
-	stuff= extract_justice_speak_from_xml(xml_files, justices_dict)
-
-	for s in stuff:
-		print(stuff)
-	## ['ginsburg', 'para1', 'para2'; 'other guy', 'para3', 'para4']
-
-	## so now how can we tell the boundaries? 
 
 	## write a function to treat each justice as a novel; fill up w/ their dictums. 
 	## the .txt files don't have any author data baked in, but the xml does.
@@ -286,6 +315,12 @@ if __name__ == '__main__':
 	## by what documents they contributed to should be enough.
 	## could very easily do tf-idf, things like that on this data prior to
 	## running it through an advanced pipeilne. 
+
+	## we need to reduce chief justices to only match for the cases in our corpus.
+	## quick dict lookup in the method takes care of that, no culling needed
+	stuff= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
+	print(len(stuff))
+	## ['ginsburg', 'para1', 'para2'; 'other guy', 'para3', 'para4']
 
 
 
