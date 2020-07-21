@@ -3,6 +3,11 @@ brew install python3
 pip3 install pandas
 pip3 install matplotlib
 pip3 install pandas
+pip3 install nltk
+
+  >>> import nltk
+  >>> nltk.download('punkt')
+ 
 which python3
 
 #!/usr/local/bin/python3

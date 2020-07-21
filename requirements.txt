@@ -1,3 +1,0 @@
-beautifulsoup4==4.8.2     
-urllib3==1.25.8
-tweepy=3.8.0
