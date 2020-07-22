@@ -37,8 +37,10 @@ def read_xml(directory):
 		no_italics = re.sub('<i>|<\\/i>|<b>|<\\/b>', '', xmlstring)
 		no_ref = re.sub('<ref(.*)\\/>', '', no_italics)
 		no_milestones = re.sub('<milestone(.*)\\/>', '', no_ref)
+		no_bad_chars = re.sub('\xa0(.*)\xa0','', no_milestones)
+		# no_certiorari = re.sub('<p n="x">CERTIORARI(.*)<p n="x" type="author">', '<p n="x" type="author">',no_bad_chars, flags=re.S)
 		## parse it from string and turn it into a tree.
-		roots.append(ET.ElementTree(ET.fromstring(no_milestones)))
+		roots.append(ET.ElementTree(ET.fromstring(no_bad_chars)))
 	return roots
 
 '''
@@ -199,7 +201,7 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 				## prevents tracking useless front matter e.g.
 				## <p n="x">Amicus Curiae Information from page 307 intentionally omitted</p>
 				elif ('author' not in p.attrib.values() and 'x' in p.attrib.values() and 'opinion:majority' not in p.attrib.values()):
-					if ('OPINION' == text):
+					if ('Opinion' == text):
 						content_bucket.append('PERCURIAM')
 					else:
 						## perhaps there is an author with the author tag. 
@@ -277,12 +279,34 @@ def justice_sub(string):
 	if (string is None):
 		return 'break'
 	else:
+		## various justice subs
 		mr = re.sub('MR. JUSTICE', 'Mr. Justice', string)
 		ms = re.sub('MS. JUSTICE', 'Ms. Justice', mr)
 		none = re.sub("JUSTICE", "Justice", ms)
+		## various per curiam cases
 		pc = re.sub('(.*)PER CURIAM(.*)', 'PERCURIAM', none)
-		sandra = re.sub("O'CONNOR", "OCONNOR", pc)
-		breaks = re.sub('\n', ' ', sandra)
+		## whatever the first case she was on
+		sandra = re.sub("O'CONNOR|O'Connor", "OCONNOR", pc)
+		## 517.US.484
+		stevens = re.sub("Stevens", "STEVENS", sandra)
+		## 523.US.740
+		rehnquist = re.sub("CHIEF Justice REHNQUIST|Chief Justice Rehnquist", "THE CHIEF Justice", stevens)
+		## 525 US 471
+		opinion = re.sub("OPINION", "Opinion", rehnquist)
+		## 518 US 712
+		kennedy = re.sub("Kennedy", "KENNEDY", opinion)
+		## 533 US 194
+		breyer = re.sub("Breyer", "BREYER", kennedy)
+		## 528 US 377
+		souter = re.sub("Souter", "SOUTER", breyer)
+		## 530 US 567
+		scalia = re.sub("Scalia", "SCALIA", souter)
+		## 533 US 98
+		thomas = re.sub("Thomas", "THOMAS", scalia)
+		## 531 US 278
+		ginsburg = re.sub("Ginsburg", "GINSBURG", thomas)
+		## clean up for consistent spacing and line wraps.
+		breaks = re.sub('\n', ' ', ginsburg)
 		spaces = re.sub(' +', ' ', breaks)
 		return spaces
 
@@ -385,14 +409,15 @@ if __name__ == '__main__':
 	nineties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1990s'	
 	two_thousands = '/Users/tim/Desktop/2000s_culled'	
 	## root objects. 
-	fifties_f = read_xml(fifties)
-	sixties_f = read_xml(sixties)
-	seventies_f = read_xml(seventies)
-	eighties_f = read_xml(eighties)
-	nineties_f = read_xml(nineties)
+	# fifties_f = read_xml(fifties)
+	# sixties_f = read_xml(sixties)
+	# seventies_f = read_xml(seventies)
+	# eighties_f = read_xml(eighties)
+	# nineties_f = read_xml(nineties)
 	two_thousands_f = read_xml(two_thousands)
 
-	xml_files = fifties_f + sixties_f + seventies_f + eighties_f + nineties_f + two_thousands_f
+	# xml_files = fifties_f + sixties_f + seventies_f + eighties_f + nineties_f + two_thousands_f
+	xml_files = two_thousands_f
 	tiny_files = read_xml('/Users/tim/Desktop/tmp_cases')
 
 	## write a function to treat each justice as a novel; fill up w/ their dictums. 
@@ -410,7 +435,7 @@ if __name__ == '__main__':
 	## running it through an advanced pipeilne. 
 	## we need to reduce chief justices to only match for the cases in our corpus.
 	## quick dict lookup in the method takes care of that, no culling needed
-	stuff, cont= extract_justice_speak_from_xml(tiny_files, justices_dict, chief_justices_dict)
+	stuff, cont= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
 	# print(len(stuff))
 	# print(len(cont))
 	for i in range(len(cont)):
