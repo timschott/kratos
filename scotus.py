@@ -165,12 +165,12 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 		## get the root
 		root = case.getroot()
 		print('processing...', root.attrib.get('id'))
-		## who was chief:
 
+		## if this look up fails it means the case is just a denial of writ of certiorari
 		if (root.attrib.get('id') not in chief_dict):
-			print('bad', root.attrib.get('id'))
-			continue
+			print('denied', root.attrib.get('id'))
 		else:
+			## who was chief:
 			chief = chief_dict[root.attrib.get('id')]
 		## recall how xml works
 		## the tag is USCase; 
@@ -409,15 +409,14 @@ if __name__ == '__main__':
 	nineties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1990s'	
 	two_thousands = '/Users/tim/Desktop/2000s_culled'	
 	## root objects. 
-	# fifties_f = read_xml(fifties)
-	# sixties_f = read_xml(sixties)
-	# seventies_f = read_xml(seventies)
-	# eighties_f = read_xml(eighties)
-	# nineties_f = read_xml(nineties)
+	fifties_f = read_xml(fifties)
+	sixties_f = read_xml(sixties)
+	seventies_f = read_xml(seventies)
+	eighties_f = read_xml(eighties)
+	nineties_f = read_xml(nineties)
 	two_thousands_f = read_xml(two_thousands)
 
-	# xml_files = fifties_f + sixties_f + seventies_f + eighties_f + nineties_f + two_thousands_f
-	xml_files = two_thousands_f
+	xml_files = fifties_f + sixties_f + seventies_f + eighties_f + nineties_f + two_thousands_f
 	tiny_files = read_xml('/Users/tim/Desktop/tmp_cases')
 
 	## write a function to treat each justice as a novel; fill up w/ their dictums. 
@@ -441,7 +440,6 @@ if __name__ == '__main__':
 	for i in range(len(cont)):
 		if (len(cont[i]) > 0):
 			print(iv_justices_dict[i], len(cont[i]))
-	## ['ginsburg', 'para1', 'para2'; 'other guy', 'para3', 'para4']
 
 
 
