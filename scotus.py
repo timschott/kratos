@@ -58,8 +58,8 @@ def generate_justice_data(filename):
 		## John Marshall Harlan (1899–1971)
 		if justice == 'JHarlan2':
 			justice = 'HARLAN'
-		## I have no cases after 2005 so these new-ish justices are out. (BKavanaugh is not even in this dataframe).
-		elif justice in ('SAAlito', 'SSotomayor', 'EKagan', 'NMGorsuch'):
+		## I have no cases before 1950 or after 2005 so quite old + new-ish justices are out. (BKavanaugh is not even in this dataframe).
+		elif justice in ('FMurphy', 'WBRutledge', 'JGRoberts', 'SAAlito', 'SSotomayor', 'EKagan', 'NMGorsuch'):
 			continue
 		else:
 			if (is_upper(justice) == 2):
@@ -157,18 +157,19 @@ def clean_and_normalize_data(case_list, stopwords):
 	return sentence_list
  
 def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
-	# list of 34 empty lists.
-	justices_output = [[] for i in range(34)]
+	# list of 31 empty lists.
+	justices_output = [[] for i in range(31)]
+	case_count = 0
 	for case in case_list:
 		## track down what justices speak in that particular case.
 		## then slide that input within the appropriate index of justices_output.
 		## get the root
 		root = case.getroot()
-		print('processing...', root.attrib.get('id'))
 
 		## if this look up fails it means the case is just a denial of writ of certiorari
 		if (root.attrib.get('id') not in chief_dict):
-			print('denied', root.attrib.get('id'))
+			# print('denied', root.attrib.get('id'))
+			continue
 		else:
 			## who was chief:
 			chief = chief_dict[root.attrib.get('id')]
@@ -198,7 +199,7 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 				elif ('PERCURIAM' in text):
 					content_bucket.append('PERCURIAM')
 				## another if its found outside the text in the intro.
-				## prevents tracking useless front matter e.g.
+				## otherwise, prevents tracking useless front matter e.g.
 				## <p n="x">Amicus Curiae Information from page 307 intentionally omitted</p>
 				elif ('author' not in p.attrib.values() and 'x' in p.attrib.values() and 'opinion:majority' not in p.attrib.values()):
 					if ('Opinion' == text):
@@ -251,6 +252,9 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 				author_value = justice_dict[author]
 				justices_output[author_value].append(block)
 
+		case_count +=1
+
+	print('case count', case_count)
 	return case_container, justices_output
 
 '''
@@ -397,10 +401,10 @@ if __name__ == '__main__':
 	## print({k: chief_justices_dict[k] for k in list(chief_justices_dict)[:100]})
 
 	## create a dict of this i.e. ({'BURTON': 1, 'JACKSON': 2,...})
-	counts = list(range(0,34))
+	counts = list(range(0,31))
 	justices_dict = dict(zip(justices, counts))
 	iv_justices_dict = {v: k for k, v in justices_dict.items()}
-	## print(justices_dict['GINSBURG'])
+	## print(justices_dict)
 	## let's go big......???
 	fifties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1950s'
 	sixties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1960s'	
@@ -437,11 +441,37 @@ if __name__ == '__main__':
 	stuff, cont= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
 	# print(len(stuff))
 	# print(len(cont))
+	'''
 	for i in range(len(cont)):
-		if (len(cont[i]) > 0):
-			print(iv_justices_dict[i], len(cont[i]))
+		#if (len(cont[i]) > 0):
+		#	print(iv_justices_dict[i], len(cont[i]))
+		c=0
+		w=0
+		for paragraph in cont[i]:
+			w += len(paragraph.split())
+			for word in paragraph:
+				c+=len(word)
+		## chars per opinion
+		print('CPO', iv_justices_dict[i], c/len(cont[i]))
+		## words per opinion
+		print('WPO', iv_justices_dict[i], w/len(cont[i]))
+	'''
+	for i in range(len(cont)):
+		if (i == 1):
+			for l in cont[i]:
+				char_count=0
+				word_count=0
+				for p in l:
+					print(p)
+					word_count += len(p.split(' '))
+					for w in p:
+						char_count+=len(w)
 
-
+			print('AMT', iv_justices_dict, len(cont[i]))
+			## chars per opinion
+			print('CPO', iv_justices_dict[i], char_count/len(cont[i]))
+			## words per opinion
+			print('WPO', iv_justices_dict[i], word_count/len(cont[i]))
 
 
 
