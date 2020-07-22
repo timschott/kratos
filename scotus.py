@@ -34,10 +34,11 @@ def read_xml(directory):
 		fullname = os.path.join(directory, filename)
 		xmlstring = open(fullname, 'r').read()
 		## get rid of interrupting characs. 
-		no_italics = re.sub('<i>|<\\/i>', '', xmlstring)
+		no_italics = re.sub('<i>|<\\/i>|<b>|<\\/b>', '', xmlstring)
 		no_ref = re.sub('<ref(.*)\\/>', '', no_italics)
+		no_milestones = re.sub('<milestone(.*)\\/>', '', no_ref)
 		## parse it from string and turn it into a tree.
-		roots.append(ET.ElementTree(ET.fromstring(no_ref)))
+		roots.append(ET.ElementTree(ET.fromstring(no_milestones)))
 	return roots
 
 '''
@@ -65,6 +66,7 @@ def generate_justice_data(filename):
 				justice = justice[2:]
 
 		clean_justices.append(justice.upper())
+	clean_justices.append('PERCURIAM')
 
 	## return the justice list
 	## as well as a dict containing the case id (in the format 329.US.29)
@@ -153,8 +155,8 @@ def clean_and_normalize_data(case_list, stopwords):
 	return sentence_list
  
 def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
-	# list of 33 empty lists.
-	justices_output = [[] for i in range(33)]
+	# list of 34 empty lists.
+	justices_output = [[] for i in range(34)]
 	for case in case_list:
 		## track down what justices speak in that particular case.
 		## then slide that input within the appropriate index of justices_output.
@@ -177,41 +179,45 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 		case_container = []
 		for div in body:
 			paragraphs = div.findall("p")
-			for p in list(paragraphs):
-				## going to help us down the road.
+			for p in list(paragraphs):				
+				## case0.0: (skip an empty string)
 				text = justice_sub(p.text)
-				print('p.text after sub ', text)
 				## add either the author or text of a paragraph to this list each time.
 				content_bucket = []
-				if text == 'continue':
-					continue
-				## to prevent tracking useless front matter e.g.
+				if text == 'break':
+					break
+				## skip over non numbered, non x'd paras. 
+				##  <p n="">II</p>
+				elif (len(p.attrib.values())==1 and 'n' in p.attrib.keys() and p.attrib['n'] == ''):
+					break
+
+				## case0.25: per curiam needs two checks... 
+				## once if its well formed in the text itself (with an author tag or something. )
+				elif ('PERCURIAM' in text):
+					content_bucket.append('PERCURIAM')
+				## another if its found outside the text in the intro.
+				## prevents tracking useless front matter e.g.
 				## <p n="x">Amicus Curiae Information from page 307 intentionally omitted</p>
-				## case0: (skip)
-				elif ('author' not in p.attrib.values() and 'x' in p.attrib.values()):
-					continue
-				## case0.5: (skip)
-				## case1: a well formed, <p n="x" type="author">
-				## make sure it has a n ="x" value and type="author" value. 
-				elif ('author' in p.attrib.values() and 'x' in p.attrib.values()):
-					## the author ought to be the first capitalized word. 
-					primary_author = re.sub('\\.|\\,|\\;|\\:', '', first_upper(text))
-					primary_list = primary_author.split(' ')
-
-					## if there is no entirely capitalized word, there's a formatting issue in this paragraph.	
-					if (len(primary_list) > 1):
-						print("something weird happpened")
-						print(primary_list)
-
-					## we have encountered a chief justice.
-					if (len(primary_author) > 1 and 'THE' in primary_author):
-						content_bucket.append(chief)
-
-					## base case; should be able to handle (should make sure they're in the dict.)
+				elif ('author' not in p.attrib.values() and 'x' in p.attrib.values() and 'opinion:majority' not in p.attrib.values()):
+					if ('OPINION' == text):
+						content_bucket.append('PERCURIAM')
 					else:
-						if (primary_author in justice_dict):
-							print(primary_author)
-							content_bucket.append(primary_author)
+						## perhaps there is an author with the author tag. 
+						if (justice_helper(text, chief, justice_dict, content_bucket)) == 'continue':
+							continue
+
+				## case1: a well formed, <p n="x" type="author"> or <p n="19" type="author"
+				## make sure it has a n ="x" value and type="author" value. 
+				elif ('author' in p.attrib.values()):
+					## the author ought to be the first capitalized word. 
+					justice_helper(text, chief, justice_dict, content_bucket)
+
+				## make sure we aren't losing a majority at the top of a case that lacks author tags or opinion;majority values
+				## has only been an edge case for pacific gas 475 us 1
+				## which incidentally has an extremely broken wikipedia page
+				## https://en.wikipedia.org/wiki/Pacific_Gas_%26_Electric_Co._v._Public_Utilities_Commission
+				elif ('n' in p.attrib.keys() and 'Justice' in text and 'judgment' in text):
+					justice_helper(text, chief, justice_dict, content_bucket)
 				## ideally, run of the mill <p n="23">The text goes here.</p>
 				## but could be a fake paragraph...
 				## evaluates to true if it is legitimately text.
@@ -235,7 +241,6 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 		## do stuff.
 		author = ""
 		for block in case_container:
-			print(block)
 			## we have reached an author marker
 			if (is_upper(block[0]) == len(block[0]) or author  == ""):
 				author = block[0]
@@ -270,13 +275,35 @@ def replacement(match):
 '''
 def justice_sub(string):
 	if (string is None):
-		return 'continue'
+		return 'break'
 	else:
 		mr = re.sub('MR. JUSTICE', 'Mr. Justice', string)
 		ms = re.sub('MS. JUSTICE', 'Ms. Justice', mr)
-		breaks = re.sub('\n', ' ', ms)
+		none = re.sub("JUSTICE", "Justice", ms)
+		pc = re.sub('(.*)PER CURIAM(.*)', 'PERCURIAM', none)
+		sandra = re.sub("O'CONNOR", "OCONNOR", pc)
+		breaks = re.sub('\n', ' ', sandra)
 		spaces = re.sub(' +', ' ', breaks)
 		return spaces
+
+## will ignore if we don't have a justice
+def justice_helper(sentence, chief, justice_dict, content_bucket):
+	if (sentence is None):
+		return 'break'
+	else:
+		primary_author = re.sub('\\.|\\,|\\;|\\:', '', first_upper(sentence))
+		primary_list = primary_author.split(' ')
+		## if there is no entirely capitalized word, there's a formatting issue in this paragraph.	
+		if (len(primary_list) > 1 or len(primary_list[0])== 1):
+			return 'continue'
+		## we have encountered a chief justice (when they are first).
+		elif (len(primary_author) > 1 and 'THE' in primary_author):
+			content_bucket.append(chief)
+
+		## base case; should be able to handle (should make sure they're in the dict.)
+		else:
+			if (primary_author in justice_dict):
+				content_bucket.append(primary_author)
 
 '''
 	helper method for case 2
@@ -346,15 +373,27 @@ if __name__ == '__main__':
 	## print({k: chief_justices_dict[k] for k in list(chief_justices_dict)[:100]})
 
 	## create a dict of this i.e. ({'BURTON': 1, 'JACKSON': 2,...})
-	counts = list(range(0,33))
+	counts = list(range(0,34))
 	justices_dict = dict(zip(justices, counts))
 	iv_justices_dict = {v: k for k, v in justices_dict.items()}
 	## print(justices_dict['GINSBURG'])
 	## let's go big......???
-	xml_path = '/Users/tim/Desktop/tmp_case'
-	
+	fifties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1950s'
+	sixties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1960s'	
+	seventies = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1970s'	
+	eighties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1980s'	
+	nineties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1990s'	
+	two_thousands = '/Users/tim/Desktop/2000s_culled'	
 	## root objects. 
-	xml_files = clean_xml(xml_path)
+	fifties_f = read_xml(fifties)
+	sixties_f = read_xml(sixties)
+	seventies_f = read_xml(seventies)
+	eighties_f = read_xml(eighties)
+	nineties_f = read_xml(nineties)
+	two_thousands_f = read_xml(two_thousands)
+
+	xml_files = fifties_f + sixties_f + seventies_f + eighties_f + nineties_f + two_thousands_f
+	tiny_files = read_xml('/Users/tim/Desktop/tmp_cases')
 
 	## write a function to treat each justice as a novel; fill up w/ their dictums. 
 	## the .txt files don't have any author data baked in, but the xml does.
@@ -369,14 +408,14 @@ if __name__ == '__main__':
 	## by what documents they contributed to should be enough.
 	## could very easily do tf-idf, things like that on this data prior to
 	## running it through an advanced pipeilne. 
-
 	## we need to reduce chief justices to only match for the cases in our corpus.
 	## quick dict lookup in the method takes care of that, no culling needed
-	stuff, cont= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
+	stuff, cont= extract_justice_speak_from_xml(tiny_files, justices_dict, chief_justices_dict)
 	# print(len(stuff))
 	# print(len(cont))
-	# for i in range(len(cont)):
-	# 	print(iv_justices_dict[i], len(cont[i]))
+	for i in range(len(cont)):
+		if (len(cont[i]) > 0):
+			print(iv_justices_dict[i], len(cont[i]))
 	## ['ginsburg', 'para1', 'para2'; 'other guy', 'para3', 'para4']
 
 
