@@ -15,6 +15,9 @@ from lxml.etree import fromstring
 # baseline for comparison. note: this function is quite useless. 
 from nltk import tokenize
 
+# URL munging
+import http.client
+
 '''
 	reads in case files, separated into paragraphs. could be configured to sweep through every sub directory.
 '''
@@ -160,6 +163,7 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 	# list of 31 empty lists.
 	justices_output = [[] for i in range(31)]
 	case_count = 0
+	hits = []
 	for case in case_list:
 		## track down what justices speak in that particular case.
 		## then slide that input within the appropriate index of justices_output.
@@ -173,6 +177,7 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 		else:
 			## who was chief:
 			chief = chief_dict[root.attrib.get('id')]
+			hits.append(root.attrib.get('id'))
 		## recall how xml works
 		## the tag is USCase; 
 		## <USCase id="523.US.574" date="1998-05-04">
@@ -255,7 +260,7 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 		case_count +=1
 
 	print('case count', case_count)
-	return case_container, justices_output
+	return case_container, justices_output, hits
 
 '''
 	counts the number of uppercase letters in a string
@@ -366,6 +371,22 @@ def conditional_helper_2(text, justice_dict):
 	else:
 		return 'not found'
 
+'''
+	make a dict that has what a year a decisions' term is and what the docket # is
+'''
+def generate_year_and_docket_dict(case_filename, data_filename):
+	text_file = open(case_filename, "r")
+	cases = text_file.read().split('\n')[:-1]
+	dataframe = pd.read_csv(data_filename, encoding= 'unicode_escape')
+
+	filtered = dataframe.loc[dataframe['usCite'].isin(cases)]
+	u = filtered.drop_duplicates(subset=['usCite'])
+
+	## zip up the year and the docker 
+
+
+	return dict(zip(u.docket, u.term))
+
 if __name__ == '__main__':
 
 	## where files live
@@ -413,6 +434,7 @@ if __name__ == '__main__':
 	nineties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1990s'	
 	two_thousands = '/Users/tim/Desktop/2000s_culled'	
 	## root objects. 
+	
 	fifties_f = read_xml(fifties)
 	sixties_f = read_xml(sixties)
 	seventies_f = read_xml(seventies)
@@ -421,7 +443,8 @@ if __name__ == '__main__':
 	two_thousands_f = read_xml(two_thousands)
 
 	xml_files = fifties_f + sixties_f + seventies_f + eighties_f + nineties_f + two_thousands_f
-	tiny_files = read_xml('/Users/tim/Desktop/tmp_cases')
+	## tiny_files = read_xml('/Users/tim/Desktop/tmp_cases')
+	
 
 	## write a function to treat each justice as a novel; fill up w/ their dictums. 
 	## the .txt files don't have any author data baked in, but the xml does.
@@ -438,23 +461,18 @@ if __name__ == '__main__':
 	## running it through an advanced pipeilne. 
 	## we need to reduce chief justices to only match for the cases in our corpus.
 	## quick dict lookup in the method takes care of that, no culling needed
-	stuff, cont= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
+	## stuff, cont, hits= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
+
 	# print(len(stuff))
 	# print(len(cont))
-	'''
-	for i in range(len(cont)):
-		#if (len(cont[i]) > 0):
-		#	print(iv_justices_dict[i], len(cont[i]))
-		c=0
-		w=0
-		for paragraph in cont[i]:
-			w += len(paragraph.split())
-			for word in paragraph:
-				c+=len(word)
-		## chars per opinion
-		print('CPO', iv_justices_dict[i], c/len(cont[i]))
-		## words per opinion
-		print('WPO', iv_justices_dict[i], w/len(cont[i]))
+	## write hits to a file ... 
+	## in between i search and replaced in sublime to go from 501.US.663 to 501 U.S. 663, the format in the dataframe.
+	# with open('case_list.txt', 'w') as f:
+	# 	for item in hits:
+	# 		f.write("%s\n" % item)
+	
+	
+	## think this block still needs tweaking.
 	'''
 	for i in range(len(cont)):
 		if (i == 1):
@@ -472,6 +490,43 @@ if __name__ == '__main__':
 			print('CPO', iv_justices_dict[i], char_count/len(cont[i]))
 			## words per opinion
 			print('WPO', iv_justices_dict[i], word_count/len(cont[i]))
+	
+	## okay, great! now, can we pull out the justice data from old oral arguments?
+	## it's going to be reliably labeled, and i think it would be a helpful addition
+	## to each justices word list
+	## for each case we used: things of interest -> docket, term. 
+	'''
+	docket_dict = generate_year_and_docket_dict('case_list.txt', 'voteList.csv')
+	## print(docket_dict)
+	## from there, go into the response from this api call
+	## API CALL 1
+	## https://api.oyez.org/cases/1990/90-634
+	##, and go to the (top level!) oral_argument_audio node.
+	## should have at least one id + href pair to audio.
+	## could be more than one.
+'''
+	"ID": 53895,
+"name": "Cohen v. Cowles Media Company",
+"oral_argument_audio": [
+	{
+	"id": 20680,
+	"href": "https://api.oyez.org/case_media/oral_argument_audio/20680"
+	}
+],
+	## API CALL 2
+	## https://api.oyez.org/case_media/oral_argument_audio/20680
+	## top level transcript bucket.
+	## for each section -> 
+	## for each "turn" -> 
+	## grab the speaker 
+	## speaker -> name.
+	## make sure they're in our list of justices! --> grab + cap last string.split(' ') portion, look up in dict
+	## grab what they say
+	## text blocks -> text. 
+	## add to their justice list
+	## keep cruising
+'''
+
 
 
 
