@@ -15,8 +15,9 @@ from lxml.etree import fromstring
 # baseline for comparison. note: this function is quite useless. 
 from nltk import tokenize
 
-# URL munging
-import http.client
+# ingest rest
+import urllib.request as request
+import json
 
 '''
 	reads in case files, separated into paragraphs. could be configured to sweep through every sub directory.
@@ -382,10 +383,64 @@ def generate_year_and_docket_dict(case_filename, data_filename):
 	filtered = dataframe.loc[dataframe['usCite'].isin(cases)]
 	u = filtered.drop_duplicates(subset=['usCite'])
 
-	## zip up the year and the docker 
-
-
+	## zip up the year and the docket
 	return dict(zip(u.docket, u.term))
+
+'''
+	first API call to gather the hrefs for the transcripts per case.
+	cf https://github.com/walkerdb/supreme_court_transcripts#oyez-api
+'''
+def get_argument_hrefs(docket_dict):
+	argument_ids = []
+	good_count = 0
+	bad_count = 0
+	## to track the cases we're also getting args for. 
+	sc_citations = []
+	## recall docket dict is docket : year
+	oyez = 'https://api.oyez.org/cases/'
+	for docket in docket_dict:
+
+		url_docket = docket
+		if len(docket.split(' '))>1:
+			url_docket = '_'.join(docket.split(' '))
+		url = oyez + str(docket_dict[docket]) + '/' + str(url_docket)
+		with request.urlopen(url) as response:
+			if response.getcode() != 200:
+				continue
+			else:
+				source = response.read()
+				data = json.loads(source)
+				## analagous to instanceOf
+				if isinstance(data, dict):
+					good_count +=1
+					## they're all the same so we really shouldn't have to fuss too much..
+					## let's dig. 
+					## get the sc citation
+					citation = data['citation']['volume'] + " U.S. " + data['citation']['page']
+					sc_citations.append(citation)
+					## what's annoying is that data['oral_argument_audio'] might be a list of dicts
+					## or it might be a dict. need to handle both cases.
+					argument_block = data['oral_argument_audio'] 
+					## if it's a dict grab the single URLs.
+					if (isinstance(argument_block, dict)):
+						argument_ids.append('href')
+					## if it's a list of dicts, grab the series of URLs.
+					else:
+						for d in argument_block:
+							argument_ids.append(d['href'])
+
+					if (good_count == 30):
+						break
+				else:
+					## should really track the cases that aren't oralized....
+					bad_count +=1
+
+				## we need to skip over api calls that don't need us useful data (aka a list of lists to start.)
+	print(good_count)
+	print(bad_count)
+	## i think itd helpful to return a dict with the ref and the case id 
+	## so then we can just loop through the keys	
+	return argument_ids, sc_citations
 
 if __name__ == '__main__':
 
@@ -497,6 +552,10 @@ if __name__ == '__main__':
 	## for each case we used: things of interest -> docket, term. 
 	'''
 	docket_dict = generate_year_and_docket_dict('case_list.txt', 'voteList.csv')
+	links, cases = get_argument_hrefs(docket_dict)
+	## for 30 cases, we have 54 links. so it turns out most of the cases have 2 piece arguments.
+	print(len(links))
+	print(cases)
 	## print(docket_dict)
 	## from there, go into the response from this api call
 	## API CALL 1
