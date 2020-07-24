@@ -261,7 +261,7 @@ def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 		case_count +=1
 
 	print('case count', case_count)
-	return case_container, justices_output, hits
+	return justices_output, hits
 
 '''
 	counts the number of uppercase letters in a string
@@ -447,7 +447,7 @@ def get_argument_hrefs(docket_dict):
 def traverse_arguments(href_filename, justices_dict, justices_container):
 	href_file = open(href_filename, "r")
 	caselinks = href_file.read().split('\n')[:-1]
-	print(len(caselinks))
+	print('calling api 2')
 
 	for link in caselinks:
 		## call api
@@ -462,33 +462,40 @@ def traverse_arguments(href_filename, justices_dict, justices_container):
 					continue
 				else:
 					sections = data['transcript']['sections']
+					if sections is not None:
 					## for each section 
-					for section in sections:
-						turns = section['turns']
-						for turn in turns:
+						for section in sections:
+							turns = section['turns']
+							if turns is not None and isinstance(turns, list):
+								for turn in turns:
 							## find the speaker
-							speaker = turn['speaker']
-							if (speaker is None):
-								continue
-							else:
-								name = speaker['name']
-								name = re.sub(', Jr.', '', name).split(" ")
-								## do some gentle cleanup.
-								# print(name.split(" "))
-								last_name = name[-1].upper()
-								## dict lookup - is this a justice?
-								if last_name in justices_dict.keys():
-									print(last_name + ' ' + str(justices_dict[last_name]))
-			break
+									if turn is not None and isinstance (turn, dict):
+									
+										speaker = turn['speaker']
+									
+										if speaker is not None:
+											name = speaker['name']
+											name = re.sub("'", '', name)
+											name = re.sub(', Jr.', '', name).split(" ")
+											## do some gentle cleanup.
+ 											# print(name.split(" "))
+											last_name = name[-1].upper()
+											## dict lookup - is this a justice?
+											if last_name in justices_dict.keys():
+												## party timne.
+												blocks = turn['text_blocks']
+												if blocks is not None and isinstance(blocks, list):
+													for block in blocks:
+														speech = block['text']
+														## print (last_name + ' ' + speech)
+														author_value = justices_dict[last_name]
+														if (block['text'] != '(Inaudible)'):
+															justices_container[author_value].append(block['text'])
+														## the only thing i'm going to prevent against is 
+														## (Inaudible)
+														## everything else is fair game!
 
-
-		## iterate through response 
-
-		## look at the speaker: are they a justice? dict lookup
-
-		## add output to correct justice dict
-
-	return 'timbo!!'
+	return justices_container
 
 if __name__ == '__main__':
 
@@ -528,7 +535,8 @@ if __name__ == '__main__':
 	counts = list(range(0,31))
 	justices_dict = dict(zip(justices, counts))
 	iv_justices_dict = {v: k for k, v in justices_dict.items()}
-	## print(justices_dict)
+	for k in justices_dict.keys():
+		print(k)
 	## let's go big......???
 	fifties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1950s'
 	sixties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1960s'	
@@ -547,7 +555,6 @@ if __name__ == '__main__':
 
 	xml_files = fifties_f + sixties_f + seventies_f + eighties_f + nineties_f + two_thousands_f
 	## tiny_files = read_xml('/Users/tim/Desktop/tmp_cases')
-	
 
 	## write a function to treat each justice as a novel; fill up w/ their dictums. 
 	## the .txt files don't have any author data baked in, but the xml does.
@@ -564,7 +571,9 @@ if __name__ == '__main__':
 	## running it through an advanced pipeilne. 
 	## we need to reduce chief justices to only match for the cases in our corpus.
 	## quick dict lookup in the method takes care of that, no culling needed
-	## stuff, cont, hits= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
+	justice_output, hits= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
+	for i in range(len(justice_output)):
+		print(len(justice_output[i]))
 
 	# print(len(stuff))
 	# print(len(cont))
@@ -633,8 +642,11 @@ if __name__ == '__main__':
 	## text blocks -> text. 
 	## add to their justice list
 	## keep cruising
-	print(traverse_arguments('href_list.txt', justices_dict, None))
+	## need to save this 
+	d_list = traverse_arguments('href_list.txt', justices_dict, justice_output)
 
+	for i in range(len(d_list)):
+		print(len(d_list[i]))
 
 
 
