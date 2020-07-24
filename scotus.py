@@ -447,6 +447,9 @@ def get_argument_hrefs(docket_dict):
 def traverse_arguments(href_filename, justices_dict, justices_container):
 	href_file = open(href_filename, "r")
 	caselinks = href_file.read().split('\n')[:-1]
+	## add a break so we know where to stop manipulating
+	for case in justices_container:
+		case.append('END_OF_OPINIONS')
 	print('calling api 2')
 
 	for link in caselinks:
@@ -455,6 +458,7 @@ def traverse_arguments(href_filename, justices_dict, justices_container):
 			if (response.getcode() != 200):
 				print('invalid url' + link)
 			else:
+				print ('calling ' + link)
 				source = response.read()
 				data = json.loads(source)
 				## transcript should be non null.
@@ -482,7 +486,7 @@ def traverse_arguments(href_filename, justices_dict, justices_container):
 											last_name = name[-1].upper()
 											## dict lookup - is this a justice?
 											if last_name in justices_dict.keys():
-												## party timne.
+												## party time
 												blocks = turn['text_blocks']
 												if blocks is not None and isinstance(blocks, list):
 													for block in blocks:
@@ -535,8 +539,7 @@ if __name__ == '__main__':
 	counts = list(range(0,31))
 	justices_dict = dict(zip(justices, counts))
 	iv_justices_dict = {v: k for k, v in justices_dict.items()}
-	for k in justices_dict.keys():
-		print(k)
+
 	## let's go big......???
 	fifties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1950s'
 	sixties = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/xml/federal/SC/1960s'	
@@ -572,8 +575,6 @@ if __name__ == '__main__':
 	## we need to reduce chief justices to only match for the cases in our corpus.
 	## quick dict lookup in the method takes care of that, no culling needed
 	justice_output, hits= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
-	for i in range(len(justice_output)):
-		print(len(justice_output[i]))
 
 	# print(len(stuff))
 	# print(len(cont))
@@ -646,8 +647,19 @@ if __name__ == '__main__':
 	d_list = traverse_arguments('href_list.txt', justices_dict, justice_output)
 
 	for i in range(len(d_list)):
-		print(len(d_list[i]))
-
+		justice_name = iv_justices_dict[i]
+		with open(justice_name + 'paragraphs.txt', 'w') as f:
+			for item in d_list[i]:
+				if (isinstance (item, list)):
+					f.write("%s\n" % str(re.sub("\\'s", "'s", item[0])))
+				else:
+					f.write("%s\n" % str(re.sub("\\'s", "'", item)))
+	print('fin!')
+	## this is a good start. but we need to break the paragraphs into individual sentences and do it again.
+	## we can play around w/ the results of my text cleaning method from the original implementation, since
+	## that's kind of where we're at with those.
+	## overall, though, we have our data from cases and opinions in a stable format.
+	## very good! 
 
 
 
