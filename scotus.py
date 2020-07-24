@@ -444,12 +444,12 @@ def get_argument_hrefs(docket_dict):
 	## so then we can just loop through the keys	
 	return argument_ids, sc_citations
 
-def traverse_arguments(href_filename, justices_dict, justices_container):
+def traverse_arguments(href_filename, justices_dict, justices_names_dict, justices_container):
 	href_file = open(href_filename, "r")
 	caselinks = href_file.read().split('\n')[:-1]
 	## add a break so we know where to stop manipulating
-	for case in justices_container:
-		case.append('END_OF_OPINIONS')
+	# for case in justices_container:
+	# 	case.append('END_OF_OPINIONS')
 	print('calling api 2')
 
 	for link in caselinks:
@@ -483,9 +483,14 @@ def traverse_arguments(href_filename, justices_dict, justices_container):
 											name = re.sub(', Jr.', '', name).split(" ")
 											## do some gentle cleanup.
  											# print(name.split(" "))
+											first_name = name[0].upper()
 											last_name = name[-1].upper()
-											## dict lookup - is this a justice?
-											if last_name in justices_dict.keys():
+
+											## dict lookup - is this a justice? have to check first + last
+											## this prevents a lawyer w/ the last name of "CLARK" from masquerading as scotus justice
+											## c.f. https://apps.oyez.org/player/#/burger6/oral_argument_audio/17755
+											## where KISSINGER's attorney... is surnamed GINSBURG.
+											if last_name in justices_dict.keys() and first_name in justices_names_dict.values():
 												## party time
 												blocks = turn['text_blocks']
 												if blocks is not None and isinstance(blocks, list):
@@ -493,12 +498,11 @@ def traverse_arguments(href_filename, justices_dict, justices_container):
 														speech = block['text']
 														## print (last_name + ' ' + speech)
 														author_value = justices_dict[last_name]
-														if (block['text'] != '(Inaudible)'):
+														if block['text'] not in ['(Inaudible)', '[Laughter]']:
 															justices_container[author_value].append(block['text'])
 														## the only thing i'm going to prevent against is 
 														## (Inaudible)
 														## everything else is fair game!
-
 	return justices_container
 
 if __name__ == '__main__':
@@ -529,13 +533,23 @@ if __name__ == '__main__':
 
 	## writing a function to pull out a list of who was on the court between 50 and 05.
 	justices, chief_justices_dict = generate_justice_data('voteList.csv')
+	## probably just going to manually make this other dict.
+	justices_last_first = {'BURTON':'HAROLD', 'JACKSON':'ROBERT', 'DOUGLAS':'WILLIAM',
+		'FRANKFURTER':'FELIX', 'REED':'STANLEY', 'BLACK':'HUGO', 'VINSON':'FRED',
+		'CLARK':'TOM', 'MINTON':'SHERMAN', 'WARREN':'EARL', 'HARLAN':'MARSHALL',
+		'BRENNAN':'WILLIAM', 'WHITTAKER': 'CHARLES', 'STEWART':'POTTER', 'WHITE':'BYRON',
+		'GOLDBERG':'ARTHUR', 'FORTAS':'ABE', 'MARSHALL':'THURGOOD', 'BURGER':'WARREN',
+		'BLACKMUN':'HARRY', 'POWELL':'LEWIS', 'REHNQUIST':'WILLIAM', 'STEVENS':'JOHN',
+		'OCONNOR':'SANDRA', 'SCALIA':'ANTONIN', 'KENNEDY':'ANTHONY', 'SOUTER':'DAVID',
+		'THOMAS':'CLARENCE', 'GISNBURG':'RUTH', 'BREYER':'STEPHEN'}
+
 	## list(dict) returns the keys. 
 	## print(list(chief_justices_dict)[1:10])
 
 	## print position (key) and output (value) for every element in the dict (well, first 10)
 	## print({k: chief_justices_dict[k] for k in list(chief_justices_dict)[:100]})
 
-	## create a dict of this i.e. ({'BURTON': 1, 'JACKSON': 2,...})
+	## create a dict of justices i.e. ({'BURTON': 1, 'JACKSON': 2,...})
 	counts = list(range(0,31))
 	justices_dict = dict(zip(justices, counts))
 	iv_justices_dict = {v: k for k, v in justices_dict.items()}
@@ -585,7 +599,7 @@ if __name__ == '__main__':
 	# 		f.write("%s\n" % item)
 	
 	
-	## think this block still needs tweaking.
+	## think this block still needs tweaking. (can aggregate it later, who care)
 	'''
 	for i in range(len(cont)):
 		if (i == 1):
@@ -603,6 +617,7 @@ if __name__ == '__main__':
 			print('CPO', iv_justices_dict[i], char_count/len(cont[i]))
 			## words per opinion
 			print('WPO', iv_justices_dict[i], word_count/len(cont[i]))
+	'''
 	
 	## okay, great! now, can we pull out the justice data from old oral arguments?
 	## it's going to be reliably labeled, and i think it would be a helpful addition
@@ -613,8 +628,8 @@ if __name__ == '__main__':
 	## https://api.oyez.org/cases/1990/90-634
 	## go to the (top level!) oral_argument_audio node.
 	## should have at least one id + href pair to audio.
-	## docket_dict = generate_year_and_docket_dict('case_list.txt', 'voteList.csv')
-	## links, transcript_cases = get_argument_hrefs(docket_dict)
+	docket_dict = generate_year_and_docket_dict('case_list.txt', 'voteList.csv')
+	links, transcript_cases = get_argument_hrefs(docket_dict)
 	## for 30 cases, we have 54 links. so it turns out most of the cases have 2 piece arguments.
 	## going to write them to a text file because this api call is expesnive 
 	## also write out what cases are included in this bunch
@@ -626,7 +641,7 @@ if __name__ == '__main__':
 	with open('transcript_case_list.txt', 'w') as f:
 		for transcripted in transcript_cases:
 			f.write("%s\n" % transcripted)
-	'''
+	
 	## found a transcript for 639 cases out of 723
 	## this resulted in 705 href's (some cases have "part1" and "part2")
 
@@ -644,8 +659,8 @@ if __name__ == '__main__':
 	## add to their justice list
 	## keep cruising
 	## need to save this 
-	d_list = traverse_arguments('href_list.txt', justices_dict, justice_output)
-
+	d_list = traverse_arguments('href_list.txt', justices_dict, justices_last_first, justice_output)
+	
 	for i in range(len(d_list)):
 		justice_name = iv_justices_dict[i]
 		with open(justice_name + 'paragraphs.txt', 'w') as f:
@@ -659,13 +674,4 @@ if __name__ == '__main__':
 	## we can play around w/ the results of my text cleaning method from the original implementation, since
 	## that's kind of where we're at with those.
 	## overall, though, we have our data from cases and opinions in a stable format.
-	## very good! 
-
-
-
-
-
-
-
-  
-	
+	## very good!
