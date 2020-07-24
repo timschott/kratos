@@ -412,25 +412,27 @@ def get_argument_hrefs(docket_dict):
 				data = json.loads(source)
 				## analagous to instanceOf
 				if isinstance(data, dict):
-					good_count +=1
 					## they're all the same so we really shouldn't have to fuss too much..
 					## let's dig. 
 					## get the sc citation
+					if (data['citation'] is None or data['citation']['volume'] is None or data['citation']['page'] is None):
+						bad_count+=1
+						continue
+
+					good_count +=1
 					citation = data['citation']['volume'] + " U.S. " + data['citation']['page']
 					sc_citations.append(citation)
 					## what's annoying is that data['oral_argument_audio'] might be a list of dicts
 					## or it might be a dict. need to handle both cases.
 					argument_block = data['oral_argument_audio'] 
-					## if it's a dict grab the single URLs.
-					if (isinstance(argument_block, dict)):
-						argument_ids.append('href')
-					## if it's a list of dicts, grab the series of URLs.
-					else:
-						for d in argument_block:
-							argument_ids.append(d['href'])
-
-					if (good_count == 30):
-						break
+					if argument_block is not None:
+						## if it's a dict grab the single URLs.
+						if (isinstance(argument_block, dict)):
+							argument_ids.append('href')
+						## if it's a list of dicts, grab the series of URLs.
+						else:
+							for d in argument_block:
+								argument_ids.append(d['href'])
 				else:
 					## should really track the cases that aren't oralized....
 					bad_count +=1
@@ -441,6 +443,52 @@ def get_argument_hrefs(docket_dict):
 	## i think itd helpful to return a dict with the ref and the case id 
 	## so then we can just loop through the keys	
 	return argument_ids, sc_citations
+
+def traverse_arguments(href_filename, justices_dict, justices_container):
+	href_file = open(href_filename, "r")
+	caselinks = href_file.read().split('\n')[:-1]
+	print(len(caselinks))
+
+	for link in caselinks:
+		## call api
+		with request.urlopen(link) as response:
+			if (response.getcode() != 200):
+				print('invalid url' + link)
+			else:
+				source = response.read()
+				data = json.loads(source)
+				## transcript should be non null.
+				if (data['transcript'] is None):
+					continue
+				else:
+					sections = data['transcript']['sections']
+					## for each section 
+					for section in sections:
+						turns = section['turns']
+						for turn in turns:
+							## find the speaker
+							speaker = turn['speaker']
+							if (speaker is None):
+								continue
+							else:
+								name = speaker['name']
+								name = re.sub(', Jr.', '', name).split(" ")
+								## do some gentle cleanup.
+								# print(name.split(" "))
+								last_name = name[-1].upper()
+								## dict lookup - is this a justice?
+								if last_name in justices_dict.keys():
+									print(last_name + ' ' + str(justices_dict[last_name]))
+			break
+
+
+		## iterate through response 
+
+		## look at the speaker: are they a justice? dict lookup
+
+		## add output to correct justice dict
+
+	return 'timbo!!'
 
 if __name__ == '__main__':
 
@@ -550,30 +598,31 @@ if __name__ == '__main__':
 	## it's going to be reliably labeled, and i think it would be a helpful addition
 	## to each justices word list
 	## for each case we used: things of interest -> docket, term. 
-	'''
-	docket_dict = generate_year_and_docket_dict('case_list.txt', 'voteList.csv')
-	links, cases = get_argument_hrefs(docket_dict)
-	## for 30 cases, we have 54 links. so it turns out most of the cases have 2 piece arguments.
-	print(len(links))
-	print(cases)
-	## print(docket_dict)
-	## from there, go into the response from this api call
+	
 	## API CALL 1
 	## https://api.oyez.org/cases/1990/90-634
-	##, and go to the (top level!) oral_argument_audio node.
+	## go to the (top level!) oral_argument_audio node.
 	## should have at least one id + href pair to audio.
-	## could be more than one.
-'''
-	"ID": 53895,
-"name": "Cohen v. Cowles Media Company",
-"oral_argument_audio": [
-	{
-	"id": 20680,
-	"href": "https://api.oyez.org/case_media/oral_argument_audio/20680"
-	}
-],
+	## docket_dict = generate_year_and_docket_dict('case_list.txt', 'voteList.csv')
+	## links, transcript_cases = get_argument_hrefs(docket_dict)
+	## for 30 cases, we have 54 links. so it turns out most of the cases have 2 piece arguments.
+	## going to write them to a text file because this api call is expesnive 
+	## also write out what cases are included in this bunch
+	
+	with open('href_list.txt', 'w') as f:
+		for link in links:
+			f.write("%s\n" % link)
+
+	with open('transcript_case_list.txt', 'w') as f:
+		for transcripted in transcript_cases:
+			f.write("%s\n" % transcripted)
+	'''
+	## found a transcript for 639 cases out of 723
+	## this resulted in 705 href's (some cases have "part1" and "part2")
+
 	## API CALL 2
 	## https://api.oyez.org/case_media/oral_argument_audio/20680
+	## using our generated hrefs
 	## top level transcript bucket.
 	## for each section -> 
 	## for each "turn" -> 
@@ -584,8 +633,7 @@ if __name__ == '__main__':
 	## text blocks -> text. 
 	## add to their justice list
 	## keep cruising
-'''
-
+	print(traverse_arguments('href_list.txt', justices_dict, None))
 
 
 
