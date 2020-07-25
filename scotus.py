@@ -448,8 +448,8 @@ def traverse_arguments(href_filename, justices_dict, justices_names_dict, justic
 	href_file = open(href_filename, "r")
 	caselinks = href_file.read().split('\n')[:-1]
 	## add a break so we know where to stop manipulating
-	# for case in justices_container:
-	# 	case.append('END_OF_OPINIONS')
+	for case in justices_container:
+		case.append('END_OF_OPINIONS')
 	print('calling api 2')
 
 	for link in caselinks:
@@ -485,12 +485,13 @@ def traverse_arguments(href_filename, justices_dict, justices_names_dict, justic
  											# print(name.split(" "))
 											first_name = name[0].upper()
 											last_name = name[-1].upper()
-
+											## if ginsburg - ruth 
 											## dict lookup - is this a justice? have to check first + last
 											## this prevents a lawyer w/ the last name of "CLARK" from masquerading as scotus justice
 											## c.f. https://apps.oyez.org/player/#/burger6/oral_argument_audio/17755
 											## where KISSINGER's attorney... is surnamed GINSBURG.
-											if last_name in justices_dict.keys() and first_name in justices_names_dict.values():
+											## todo - test.
+											if last_name in justices_dict.keys() and justices_names_dict[last_name] == first_name:
 												## party time
 												blocks = turn['text_blocks']
 												if blocks is not None and isinstance(blocks, list):
@@ -541,7 +542,7 @@ if __name__ == '__main__':
 		'GOLDBERG':'ARTHUR', 'FORTAS':'ABE', 'MARSHALL':'THURGOOD', 'BURGER':'WARREN',
 		'BLACKMUN':'HARRY', 'POWELL':'LEWIS', 'REHNQUIST':'WILLIAM', 'STEVENS':'JOHN',
 		'OCONNOR':'SANDRA', 'SCALIA':'ANTONIN', 'KENNEDY':'ANTHONY', 'SOUTER':'DAVID',
-		'THOMAS':'CLARENCE', 'GISNBURG':'RUTH', 'BREYER':'STEPHEN'}
+		'THOMAS':'CLARENCE', 'GINSBURG':'RUTH', 'BREYER':'STEPHEN'}
 
 	## list(dict) returns the keys. 
 	## print(list(chief_justices_dict)[1:10])
