@@ -506,10 +506,14 @@ def traverse_arguments(href_filename, justices_dict, justices_names_dict, justic
 														## everything else is fair game!
 	return justices_container
 
+def break_apart_justice_paragraphs(case_directory):
+
+	return 'hi!'
+
 if __name__ == '__main__':
 
 	## where files live
-	path = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/text/federal/SC/1950s'
+	## path = '/Users/tim/Documents/7thSemester/freeSpeech/repos/cases/text/federal/SC/1950s'
 	## read data
 	## files = read_data(path)
 	
@@ -533,7 +537,7 @@ if __name__ == '__main__':
 	## because that's how word2vec splits up units of study. 
 
 	## writing a function to pull out a list of who was on the court between 50 and 05.
-	justices, chief_justices_dict = generate_justice_data('voteList.csv')
+	justices, chief_justices_dict = generate_justice_data('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/voteList.csv')
 	## probably just going to manually make this other dict.
 	justices_last_first = {'BURTON':'HAROLD', 'JACKSON':'ROBERT', 'DOUGLAS':'WILLIAM',
 		'FRANKFURTER':'FELIX', 'REED':'STANLEY', 'BLACK':'HUGO', 'VINSON':'FRED',
@@ -589,7 +593,7 @@ if __name__ == '__main__':
 	## running it through an advanced pipeilne. 
 	## we need to reduce chief justices to only match for the cases in our corpus.
 	## quick dict lookup in the method takes care of that, no culling needed
-	justice_output, hits= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
+	## justice_output, hits= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
 
 	# print(len(stuff))
 	# print(len(cont))
@@ -629,19 +633,24 @@ if __name__ == '__main__':
 	## https://api.oyez.org/cases/1990/90-634
 	## go to the (top level!) oral_argument_audio node.
 	## should have at least one id + href pair to audio.
-	docket_dict = generate_year_and_docket_dict('case_list.txt', 'voteList.csv')
-	links, transcript_cases = get_argument_hrefs(docket_dict)
+
+	## docket_dict = generate_year_and_docket_dict('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/case_list.txt', '/justice_data/voteList.csv')
+	## links, transcript_cases = get_argument_hrefs(docket_dict)
 	## for 30 cases, we have 54 links. so it turns out most of the cases have 2 piece arguments.
 	## going to write them to a text file because this api call is expesnive 
 	## also write out what cases are included in this bunch
+
+	'''
 	
-	with open('href_list.txt', 'w') as f:
+	with open('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/href_list.txt', 'w') as f:
 		for link in links:
 			f.write("%s\n" % link)
 
-	with open('transcript_case_list.txt', 'w') as f:
+	with open('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/transcript_case_list.txt', 'w') as f:
 		for transcripted in transcript_cases:
 			f.write("%s\n" % transcripted)
+
+	'''
 	
 	## found a transcript for 639 cases out of 723
 	## this resulted in 705 href's (some cases have "part1" and "part2")
@@ -660,19 +669,23 @@ if __name__ == '__main__':
 	## add to their justice list
 	## keep cruising
 	## need to save this 
-	d_list = traverse_arguments('href_list.txt', justices_dict, justices_last_first, justice_output)
+	'''
+	d_list = traverse_arguments('/justice_data/href_list.txt', justices_dict, justices_last_first, justice_output)
 	
 	for i in range(len(d_list)):
 		justice_name = iv_justices_dict[i]
-		with open(justice_name + 'paragraphs.txt', 'w') as f:
+		with open('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/' + justice_name + 'paragraphs.txt', 'w') as f:
 			for item in d_list[i]:
 				if (isinstance (item, list)):
 					f.write("%s\n" % str(re.sub("\\'s", "'s", item[0])))
 				else:
 					f.write("%s\n" % str(re.sub("\\'s", "'", item)))
 	print('fin!')
+	'''
 	## this is a good start. but we need to break the paragraphs into individual sentences and do it again.
 	## we can play around w/ the results of my text cleaning method from the original implementation, since
 	## that's kind of where we're at with those.
 	## overall, though, we have our data from cases and opinions in a stable format.
 	## very good!
+	## for each text file in /justice_data/, go until END_OF_OPINIONS
+	print(break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/'))
