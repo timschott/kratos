@@ -27,6 +27,7 @@ def read_data(directory):
 	for filename in os.listdir(directory):
 		with open(os.path.join(directory, filename), 'r') as f: # open in readonly mode
 			info.append(f.readlines())
+			break
 	return info
 
 def read_xml(directory):
@@ -86,14 +87,14 @@ def generate_justice_data(filename):
 '''
 	removes some basic dead weight from the cases
 	returns a list of all the sentences from the cases in case_list
-	does not respect per-justice setup. 
+	respects a per justice setup (refactor.)
 '''
 def clean_and_normalize_data(case_list, stopwords):
 
-	sentence_list = []
-	for raw_case in case_list:
-		for paragraph in raw_case:
-			## numbers	
+	justice_list = []
+	for justice in case_list:
+		justice_speak = []
+		for paragraph in justice:
 			paragraph = re.sub('[0-9]+', '', paragraph)
 			## amps from xml
 			paragraph = re.sub('&amp;', '', paragraph)
@@ -106,11 +107,55 @@ def clean_and_normalize_data(case_list, stopwords):
 			## justice names
 			paragraph = re.sub('Mr. Justice [A-Z]+', '', paragraph)
 			paragraph = re.sub('CHIEF JUSTICE [A-Z]+', '', paragraph)
+			## case jargon like Court to court
+			paragraph = re.sub('Court', 'court', paragraph)
+			paragraph = re.sub('Amendment', "amendment", paragraph)
+			paragraph = re.sub('State', "state", paragraph)
+			paragraph = re.sub('President', "president", paragraph)
+			paragraph = re.sub('Secretary', "secretary", paragraph)
+			paragraph = re.sub('State', "state", paragraph)
+			paragraph = re.sub('Government', "government", paragraph)
+			paragraph = re.sub('Constitution', "constitution", paragraph)
+			paragraph = re.sub('Law', "law", paragraph)
+			paragraph = re.sub('Act', "act", paragraph)
+			paragraph = re.sub('Clause', "clause", paragraph)
+			paragraph = re.sub('Amendment', "amendment", paragraph)
+			## ordinals
+			paragraph = re.sub('First', "first", paragraph)
+			paragraph = re.sub('Second', "second", paragraph)
+			paragraph = re.sub('Third', "third", paragraph)
+			paragraph = re.sub('Fourth', "fourth", paragraph)
+			paragraph = re.sub('Fifth', "fifth", paragraph)
+			paragraph = re.sub('Sixth', "sixth", paragraph)
+			paragraph = re.sub('Seventh', "sevent", paragraph)
+			paragraph = re.sub('Eight', "eight", paragraph)
+			paragraph = re.sub('Ninth', "ninth", paragraph)
+			paragraph = re.sub('Tenth', "tenth", paragraph)
+			paragraph = re.sub('Eleventh', "eleventh", paragraph)
+			paragraph = re.sub('Twelfth', "twelfth", paragraph)
+			paragraph = re.sub('Thirteenth', "thirteenth", paragraph)
+			paragraph = re.sub('Fourteenth', "fourteenth", paragraph)
+			paragraph = re.sub('Fifteenth', "fifteenth", paragraph)
+			paragraph = re.sub('Sixteenth', "sixteenth", paragraph)
+			paragraph = re.sub('Seventeenth', "seventeeth", paragraph)
+			paragraph = re.sub('Eighteenth', "eighteenth", paragraph)
+			paragraph = re.sub('Nineteeth', "Nineteeth", paragraph)
+			paragraph = re.sub('Twentieth', "twentieth", paragraph)
+			paragraph = re.sub('Twenty-First', "twenty-first", paragraph)
+			paragraph = re.sub('Twenty-Second', "twenty-second", paragraph)
+			paragraph = re.sub('Twenty-Third', "twenty-third", paragraph)
+			paragraph = re.sub('Twenty-Fourth', "twenty-fourth", paragraph)
+			paragraph = re.sub('Twenty-Fifth', "twenty-fifth", paragraph)
+			paragraph = re.sub('Twenty-Sixth', "twenty-sixth", paragraph)
+			paragraph = re.sub('Twenty-Seventh', "twenty-seventh", paragraph)
+
+			## ordinals
+			## paragraph = re.sub("FIRST, SECOND, THIRD, FOURTH, FIFTH, SIXTH, SEVENTH, EIGHTH, NINTH, TENTH	")
 			## no new lines 
 			paragraph = re.sub('\\n|\\n\\n', '', paragraph)
 			paragraph = paragraph.strip()
 			## filter empties
-			if (paragraph == '' or paragraph == '.'):
+			if (paragraph == '' or paragraph == '.' or paragraph == "END_OF_OPINIONS" or len(paragraph) < 1):
 				continue
 			## lowercase first word in each paragraph
 			## "If second arg is a function, it is called for every non-overlapping occurrence of pattern.""
@@ -121,12 +166,16 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub('[A-Z][a-z]+', '', paragraph)
 			## straggling abbrevs
 			paragraph = re.sub('[A-Z]', '', paragraph)
+			## loose quote paren
+			paragraph = re.sub('\\(|\\)', '', paragraph)
 			## empty parens
 			paragraph = re.sub('\\(\\)', '', paragraph)
+			## em dash
+			paragraph = re.sub("--", "", paragraph)
 			## citation artifacts
 			paragraph = re.sub('v\\.', '', paragraph)
 			## more artifications
-			paragraph = re.sub('v\\.\\W{2,}|\\,\\W{2,}|\\. \\. \\.', '', paragraph)
+			paragraph = re.sub('v\\.\\W{2,}|\\,\\W{2,}|\\. \\. \\.', ' ', paragraph)
 			## et al
 			paragraph = re.sub('et al\\.', '', paragraph)
 			## more arficats 
@@ -143,6 +192,8 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub('c\\.|c\\)\\.', '', paragraph)
 			## vs
 			paragraph = re.sub('\\svs\\s', '', paragraph)
+			## any remaining quote marks
+			paragraph = re.sub("'","", paragraph)
 			## extra spaces
 			paragraph = re.sub(' +', ' ', paragraph)
 			## split into sentences
@@ -156,9 +207,11 @@ def clean_and_normalize_data(case_list, stopwords):
 				if (punctuation_count > word_count or word_count < 5):
 					continue
 				sentence = sentence.strip()
-				sentence_list.append(sentence)
+				justice_speak.append(sentence)
+			
+		justice_list.append(justice_speak)
 
-	return sentence_list
+	return justice_list
  
 def extract_justice_speak_from_xml(case_list, justice_dict, chief_dict):
 	# list of 31 empty lists.
@@ -507,8 +560,12 @@ def traverse_arguments(href_filename, justices_dict, justices_names_dict, justic
 	return justices_container
 
 def break_apart_justice_paragraphs(case_directory):
-
-	return 'hi!'
+	info = []
+	for filename in os.listdir(case_directory):
+		with open(os.path.join(case_directory, filename), 'r') as f: # open in readonly mode
+			info.append(f.readlines())
+			print('did antoher! ' + filename)
+	return info
 
 if __name__ == '__main__':
 
@@ -688,4 +745,19 @@ if __name__ == '__main__':
 	## overall, though, we have our data from cases and opinions in a stable format.
 	## very good!
 	## for each text file in /justice_data/, go until END_OF_OPINIONS
-	print(break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/'))
+	j =break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/speech')
+	test = clean_and_normalize_data(j, None)
+	for justice in test:
+		print(len(justice))
+	'''
+	The Court tells us that in the maintenance of its public schools,
+	 '(The State government) can close its doors or suspend 
+	its operations' so that its citizens may be free for religious devotions or instruction. 
+
+	the tells us that in the maintenance of its public schoolsgovernment) can close its doors or suspend 
+	its operations' so that its citizens 
+	may be free for religious devotions or instruction
+'''
+
+
+
