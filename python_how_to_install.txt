@@ -3,6 +3,7 @@ brew install python3
 pip3 install pandas
 pip3 install matplotlib
 pip3 install pandas
+pip3 install numpy
 pip3 install nltk
 
   >>> import nltk
@@ -12,3 +13,74 @@ which python3
 
 #!/usr/local/bin/python3
 
+
+##################
+tim@tims-mbp kratos (master) $ pip3 install numpy
+Collecting numpy
+  Downloading numpy-1.19.1-cp38-cp38-macosx_10_9_x86_64.whl (15.3 MB)
+     |████████████████████████████████| 15.3 MB 3.0 MB/s 
+Installing collected packages: numpy
+Successfully installed numpy-1.19.1
+tim@tims-mbp kratos (master) $ clearclear
+-bash: clearclear: command not found
+tim@tims-mbp kratos (master) $ clear
+
+
+tim@tims-mbp kratos (master) $ python3 scotus.py 
+Traceback (most recent call last):
+  File "scotus.py", line 3, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+tim@tims-mbp kratos (master) $ pip3 install pandas
+Collecting pandas
+  Downloading pandas-1.0.5-cp38-cp38-macosx_10_9_x86_64.whl (10.2 MB)
+     |████████████████████████████████| 10.2 MB 1.2 MB/s 
+Collecting pytz>=2017.2
+  Downloading pytz-2020.1-py2.py3-none-any.whl (510 kB)
+     |████████████████████████████████| 510 kB 3.3 MB/s 
+Collecting python-dateutil>=2.6.1
+  Using cached python_dateutil-2.8.1-py2.py3-none-any.whl (227 kB)
+Requirement already satisfied: numpy>=1.13.3 in /usr/local/lib/python3.8/site-packages (from pandas) (1.19.1)
+Collecting six>=1.5
+  Downloading six-1.15.0-py2.py3-none-any.whl (10 kB)
+Installing collected packages: pytz, six, python-dateutil, pandas
+Successfully installed pandas-1.0.5 python-dateutil-2.8.1 pytz-2020.1 six-1.15.0
+tim@tims-mbp kratos (master) $ python3 scotus.py 
+Traceback (most recent call last):
+  File "scotus.py", line 13, in <module>
+    from lxml.etree import fromstring
+ModuleNotFoundError: No module named 'lxml'
+tim@tims-mbp kratos (master) $ pip3 install lxml
+Collecting lxml
+  Downloading lxml-4.5.2-cp38-cp38-macosx_10_9_x86_64.whl (4.5 MB)
+     |████████████████████████████████| 4.5 MB 1.5 MB/s 
+Installing collected packages: lxml
+Successfully installed lxml-4.5.2
+tim@tims-mbp kratos (master) $ python3 scotus.py 
+Traceback (most recent call last):
+  File "scotus.py", line 16, in <module>
+    from nltk import tokenize
+ModuleNotFoundError: No module named 'nltk'
+tim@tims-mbp kratos (master) $ pip3 install nltk
+Collecting nltk
+  Using cached nltk-3.5.zip (1.4 MB)
+Collecting click
+  Using cached click-7.1.2-py2.py3-none-any.whl (82 kB)
+Collecting joblib
+  Using cached joblib-0.16.0-py3-none-any.whl (300 kB)
+Collecting regex
+  Downloading regex-2020.7.14.tar.gz (690 kB)
+     |████████████████████████████████| 690 kB 1.7 MB/s 
+Collecting tqdm
+  Downloading tqdm-4.48.0-py2.py3-none-any.whl (67 kB)
+     |████████████████████████████████| 67 kB 9.5 MB/s 
+Building wheels for collected packages: nltk, regex
+  Building wheel for nltk (setup.py) ... done
+  Created wheel for nltk: filename=nltk-3.5-py3-none-any.whl size=1434676 sha256=1416f8c57bce35644fa076ec7bfc3e75e00aee7fd9f840e89a6f1bbab4c6dc2a
+  Stored in directory: /Users/tim/Library/Caches/pip/wheels/ff/d5/7b/f1fb4e1e1603b2f01c2424dd60fbcc50c12ef918bafc44b155
+  Building wheel for regex (setup.py) ... done
+  Created wheel for regex: filename=regex-2020.7.14-cp38-cp38-macosx_10_14_x86_64.whl size=284989 sha256=64d2e22e2d689b6b7a59ba8ec282e185fc01015b9b61cfea99908e69e64a84f6
+  Stored in directory: /Users/tim/Library/Caches/pip/wheels/c1/d2/6f/d7db2c6251fdcb9371d7d966eaddf630ac4e375f24252de399
+Successfully built nltk regex
+Installing collected packages: click, joblib, regex, tqdm, nltk
+Successfully installed click-7.1.2 joblib-0.16.0 nltk-3.5 regex-2020.7.14 tqdm-4.48.0

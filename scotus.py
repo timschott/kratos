@@ -108,6 +108,8 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub('Mr. Justice [A-Z]+', '', paragraph)
 			paragraph = re.sub('CHIEF JUSTICE [A-Z]+', '', paragraph)
 			## case jargon like Court to court
+			paragraph = re.sub("I'm", "im", paragraph)
+			paragraph = re.sub("\bI\b", "i", paragraph)
 			paragraph = re.sub('Court', 'court', paragraph)
 			paragraph = re.sub('Amendment', "amendment", paragraph)
 			paragraph = re.sub('State', "state", paragraph)
@@ -170,6 +172,10 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub('\\(|\\)', '', paragraph)
 			## empty parens
 			paragraph = re.sub('\\(\\)', '', paragraph)
+			## brackets 
+			paragraph = re.sub('\\[|\\]', '', paragraph)
+			## thatshall
+			paragraph = re.sub("thatshall", "that shall", paragraph)
 			## em dash
 			paragraph = re.sub("--", "", paragraph)
 			## citation artifacts
@@ -561,11 +567,12 @@ def traverse_arguments(href_filename, justices_dict, justices_names_dict, justic
 
 def break_apart_justice_paragraphs(case_directory):
 	info = []
+	justices = []
 	for filename in os.listdir(case_directory):
 		with open(os.path.join(case_directory, filename), 'r') as f: # open in readonly mode
 			info.append(f.readlines())
-			print('did antoher! ' + filename)
-	return info
+			justices.append(re.sub('paragraphs.txt', '', filename))
+	return info, justices
 
 if __name__ == '__main__':
 
@@ -745,10 +752,18 @@ if __name__ == '__main__':
 	## overall, though, we have our data from cases and opinions in a stable format.
 	## very good!
 	## for each text file in /justice_data/, go until END_OF_OPINIONS
-	j =break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/speech')
-	test = clean_and_normalize_data(j, None)
-	for justice in test:
-		print(len(justice))
+	speech, speakers = break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/paragraphs')
+	test = clean_and_normalize_data(speech, None)
+
+	for i in range(len(test)):
+		justice_name = speakers[i]
+		with open('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/sents/' + justice_name + 'sents.txt', 'w') as f:
+			for item in test[i]:
+				f.write("%s\n" % str(re.sub("\\'s", "'s", item)))
+
+	print('donezo')
+
+	## lets write this information out to a file. 
 	'''
 	The Court tells us that in the maintenance of its public schools,
 	 '(The State government) can close its doors or suspend 
