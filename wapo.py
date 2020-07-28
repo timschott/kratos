@@ -106,7 +106,7 @@ def get_dates():
 	present = datetime.now() - timedelta(hours=4)
 
 	## 6 hours prior. 
-	previous = present - timedelta(hours=20)
+	previous = present - timedelta(hours=1)
 
 	x = present.strftime('%Y-%m-%d%H:%M:%S')
 	y = previous.strftime('%Y-%m-%d%H:%M:%S')
@@ -499,19 +499,19 @@ if __name__ == "__main__":
 		for date in dates:
 			print('date', date)
 		# plug in date range to debug. 
-		# article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
-		#article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-06-01T18:05:01', '2020-06-03T18:55:00', 'publishedAt')
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
+		# article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-06-01T18:05:01', '2020-06-03T18:55:00', 'publishedAt')
 
 		# print (article_json)
 
-		# article_dict = get_article_dict(article_json)
+		article_dict = get_article_dict(article_json)
 
-		# print (article_dict)
+		print (article_dict)
 
 		# print ('---------------------------------------')
 
-		# tweet_list = get_tweets(article_dict)
-
+		tweet_list = get_tweets(article_dict)
+		print (tweet_list)
 		## where are the emails ???
 		print ("ok")
 	else: 
