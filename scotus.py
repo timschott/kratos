@@ -99,17 +99,19 @@ def clean_and_normalize_data(case_list, stopwords):
 			## amps from xml
 			paragraph = re.sub('&amp;', '', paragraph)
 			## some u s print
-			paragraph = re.sub('\\.US\\._|U\\. S\\.|S\\. C\\.|L\\. ed\\.|Sup\\.|', '', paragraph)
+			paragraph = re.sub('\\.US\\._|U\\. S\\.|S\\. C\\.|L\\. ed\\.|Sup\\.|U\\.S\\.C\\.|S\\.Ct\\.|L\\.Ed\\.', '', paragraph)
 			## stars
 			paragraph = re.sub('\\*(.*)\\*(.*)\\*', '', paragraph)
 			## sections
 			paragraph = re.sub('[§]+', '', paragraph)
+			## quotes longer than three words, out of here. 
+			paragraph = quote_kill(paragraph)
 			## justice names
 			paragraph = re.sub('Mr. Justice [A-Z]+', '', paragraph)
 			paragraph = re.sub('CHIEF JUSTICE [A-Z]+', '', paragraph)
 			## case jargon like Court to court
 			paragraph = re.sub("I'm", "im", paragraph)
-			paragraph = re.sub("\bI\b", "i", paragraph)
+			paragraph = re.sub("\bI\b|I\b", "i", paragraph)
 			paragraph = re.sub('Court', 'court', paragraph)
 			paragraph = re.sub('Amendment', "amendment", paragraph)
 			paragraph = re.sub('State', "state", paragraph)
@@ -122,6 +124,10 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub('Act', "act", paragraph)
 			paragraph = re.sub('Clause', "clause", paragraph)
 			paragraph = re.sub('Amendment', "amendment", paragraph)
+			paragraph = re.sub("Supra|supra", "", paragraph)
+			paragraph = re.sub("at -", "", paragraph)
+			paragraph = re.sub("Ibid", "", paragraph)
+
 			## ordinals
 			paragraph = re.sub('First', "first", paragraph)
 			paragraph = re.sub('Second', "second", paragraph)
@@ -191,14 +197,14 @@ def clean_and_normalize_data(case_list, stopwords):
 			## floating comma
 			paragraph = re.sub(' , ', '', paragraph)
 			## empty quote
-			paragraph = re.sub("\\s'\\s'", '', paragraph)
+			# paragraph = re.sub("\\s'\\s'", '', paragraph)
 			## empty quote
-			paragraph = re.sub("\\s'\\s", '', paragraph)
+			# paragraph = re.sub("\\s'\\s", '', paragraph)
 			## c. c).
 			paragraph = re.sub('c\\.|c\\)\\.', '', paragraph)
 			## vs
 			paragraph = re.sub('\\svs\\s', '', paragraph)
-			## any remaining quote marks
+			## any remaining tick marks
 			paragraph = re.sub("'","", paragraph)
 			## extra spaces
 			paragraph = re.sub(' +', ' ', paragraph)
@@ -574,6 +580,21 @@ def break_apart_justice_paragraphs(case_directory):
 			justices.append(re.sub('paragraphs.txt', '', filename))
 	return info, justices
 
+'''
+	removes any quotes of 4 words or longer
+'''
+def quote_kill(string):
+	quote_pattern = re.compile(r'"(.*?)"')
+	kill_dict = {}
+	for m in re.finditer(quote_pattern, string):
+		if (m.group(1) is not None and len(m.group(1).split(' ')) > 3):
+			kill_dict[m.group(1)] = ""
+	
+	for i, j in kill_dict.items():
+		string = string.replace(i, j)
+	
+	return string.replace('""', '')
+
 if __name__ == '__main__':
 
 	## where files live
@@ -752,6 +773,7 @@ if __name__ == '__main__':
 	## overall, though, we have our data from cases and opinions in a stable format.
 	## very good!
 	## for each text file in /justice_data/, go until END_OF_OPINIONS
+	
 	speech, speakers = break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/paragraphs')
 	test = clean_and_normalize_data(speech, None)
 
@@ -762,7 +784,7 @@ if __name__ == '__main__':
 				f.write("%s\n" % str(re.sub("\\'s", "'s", item)))
 
 	print('donezo')
-
+	
 	## lets write this information out to a file. 
 	'''
 	The Court tells us that in the maintenance of its public schools,
