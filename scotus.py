@@ -88,6 +88,15 @@ def generate_justice_data(filename):
 	removes some basic dead weight from the cases
 	returns a list of all the sentences from the cases in case_list
 	respects a per justice setup (refactor.)
+	todo - why is this chopping off the first word of each sentence????
+	probably the last outstanding thing i care about. 
+	e.g.
+	# I mean, if you're watering it down to say that the only reason it's okay 
+	is it sends nothing but a secular message, I can't agree with you.
+	# gets sent to
+	## mean, if youre watering it down to say that the only reason it okay is 
+	## it sends nothing but a secular message cant agree with you
+	## all capital I's are getting merced. and first letter of sentences. hm. 
 '''
 def clean_and_normalize_data(case_list, stopwords):
 
@@ -127,6 +136,7 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub("Supra|supra", "", paragraph)
 			paragraph = re.sub("at -", "", paragraph)
 			paragraph = re.sub("Ibid", "", paragraph)
+			paragraph = re.sub("\bit'\b", "it's", paragraph)
 
 			## ordinals
 			paragraph = re.sub('First', "first", paragraph)
@@ -196,10 +206,6 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub("\\s's\\s", "", paragraph)
 			## floating comma
 			paragraph = re.sub(' , ', '', paragraph)
-			## empty quote
-			# paragraph = re.sub("\\s'\\s'", '', paragraph)
-			## empty quote
-			# paragraph = re.sub("\\s'\\s", '', paragraph)
 			## c. c).
 			paragraph = re.sub('c\\.|c\\)\\.', '', paragraph)
 			## vs
