@@ -104,11 +104,13 @@ def clean_and_normalize_data(case_list, stopwords):
 	for justice in case_list:
 		justice_speak = []
 		for paragraph in justice:
+			## this really annoying citation
+			paragraph = re.sub('L\\.Ed\\.2d', '', paragraph)
 			paragraph = re.sub('[0-9]+', '', paragraph)
 			## amps from xml
 			paragraph = re.sub('&amp;', '', paragraph)
 			## some u s print
-			paragraph = re.sub('U\\.S\\.|\\.US\\._|U\\. S\\.|S\\. C\\.|L\\. ed\\.|Sup\\.|U\\.S\\.C\\.|S\\.Ct\\.|L\\.Ed\\.', '', paragraph)
+			paragraph = re.sub('U\\.S\\.|\\.US\\._|U\\. S\\.|S\\. C\\.|L\\. ed\\.|Sup\\.|U\\.S\\.C\\.|S\\.Ct\\.|L\\.Ed\\.|e\\.g\\.|v\\.|i\\.e\\.', '', paragraph)
 			## stars
 			paragraph = re.sub('\\*(.*)\\*(.*)\\*', '', paragraph)
 			## sections
@@ -125,7 +127,6 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub("Co\\.", "Co", paragraph)
 			paragraph = re.sub("Ltd\\.", "Ltd", paragraph)
 			paragraph = re.sub("Inc\\.", "Inc", paragraph)
-			paragraph = re.sub("v\\.", "v", paragraph)
 			paragraph = re.sub("\bI\b|I\b", "i", paragraph)
 			paragraph = re.sub('Court', 'court', paragraph)
 			paragraph = re.sub('Amendment', "amendment", paragraph)
@@ -232,15 +233,20 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub("'","", paragraph)
 			## extra spaces
 			paragraph = re.sub(' +', ' ', paragraph)
+			## extra things i'm seeing now
+			paragraph = re.sub(' ; | d |-;| n | id |at at', '', paragraph)
+			## extra lower case d
+			paragraph = re.sub(' d ', '', paragraph)
 			## split into sentences
 			sentences = paragraph.split('.')
+			paragraph = paragraph.replace("*", "")
 			for sentence in sentences:
 				## filter sentences. 
 				punctuation_count = len(re.findall('\\.|\\,|\\;|\\:', sentence))
 				word_count = len(re.findall('[\\w-]+', sentence))
 				# condition 1: if there is more punctuation in a sentence than words
-				# condition 2: if there are less than 5 words in a sentence
-				if (punctuation_count > word_count or word_count < 5):
+				# condition 2: if there are less than 4 words in a sentence
+				if (punctuation_count > word_count or word_count < 4):
 					continue
 				sentence = sentence.strip()
 				justice_speak.append(sentence)
@@ -366,11 +372,13 @@ def first_upper(string):
 		return next((word for word in string.split() if word.isupper()), string)
 
 '''
-	lowercases the regex results
+	lowercases all of a regex match. (group0 is everything)
 '''
 def replacement(match):
 	return match.group(0).lower()
-
+'''
+	lowercase the first word of an interior sentence
+'''
 def replacement_dupe(match):
 	return match.group(1) + match.group(3) + " " + match.group(4).lower()
 
@@ -602,6 +610,8 @@ def break_apart_justice_paragraphs(case_directory):
 	info = []
 	justices = []
 	for filename in os.listdir(case_directory):
+		if not filename.endswith('.txt'): 
+			continue
 		with open(os.path.join(case_directory, filename), 'r') as f: # open in readonly mode
 			info.append(f.readlines())
 			justices.append(re.sub('paragraphs.txt', '', filename))
@@ -807,7 +817,7 @@ if __name__ == '__main__':
 	## very good!
 	## for each text file in /justice_data/, go until END_OF_OPINIONS
 	
-	speech, speakers = break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/small')
+	speech, speakers = break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/paragraphs/')
 	test = clean_and_normalize_data(speech, None)
 
 	for i in range(len(test)):
