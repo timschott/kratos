@@ -144,7 +144,7 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub("Ibid", "", paragraph)
 			paragraph = re.sub("\bit'\b", "it's", paragraph)
 			paragraph = re.sub("\\(T\\)he", "The", paragraph)
-			paragraph = re.sub("-\\,", "", paragraph)
+			paragraph = re.sub("-,", "", paragraph)
 
 			## ordinals
 			paragraph = re.sub('First', "first", paragraph)
@@ -187,21 +187,18 @@ def clean_and_normalize_data(case_list, stopwords):
 			## get rid of citations.
 			paragraph = re.sub('See (.*?) \\(\\)\\.', '', paragraph)
 			paragraph = re.sub('See ante\\, at (.*)\\.', '', paragraph)
+			paragraph = re.sub('ante, at', '', paragraph)
 			## lowercase first word in each paragraph
 			## "If second arg is a function, it is called for every non-overlapping occurrence of pattern.""
 			## https://docs.python.org/3/library/re.html
 			## so replacement is called on that match. handy!
+			## use {0,} to capture I (rather than +)
 			paragraph = re.sub('(?<!.)[A-Z][a-z]{0,}', replacement, paragraph) 
-			## lowercase whole thing
-			print('ok, before the sub part: ', paragraph)
 			## remove any uppercased leading sentence words
 			## need to be more clever
-			## i can remove the upper cases after i lowercase the first word in each sentence. 
-			## lowercase group 3
+			## i can remove the upper cases, after i lowercase the first word in each sentence. 
 			paragraph = re.sub('(\\w{2,}|([^A-Z]))(\\.\\s+)(\\w+)', replacement_dupe, paragraph) 
-			print('\n')			
-			print('ok, after the sub part: ', paragraph)
-
+			## remove extra uppers now.
 			paragraph = re.sub('[A-Z][a-z]+', '', paragraph)
 			## straggling abbrevs
 			paragraph = re.sub('[A-Z]', '', paragraph)
@@ -237,8 +234,6 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub(' +', ' ', paragraph)
 			## split into sentences
 			sentences = paragraph.split('.')
-			print('\n')
-			print('at the end of this', paragraph)
 			for sentence in sentences:
 				## filter sentences. 
 				punctuation_count = len(re.findall('\\.|\\,|\\;|\\:', sentence))
@@ -377,10 +372,6 @@ def replacement(match):
 	return match.group(0).lower()
 
 def replacement_dupe(match):
-	print(match.group(1))
-	print(match.group(2))
-	print(match.group(3))
-	print(match.group(4))
 	return match.group(1) + match.group(3) + " " + match.group(4).lower()
 
 '''
