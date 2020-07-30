@@ -108,18 +108,24 @@ def clean_and_normalize_data(case_list, stopwords):
 			## amps from xml
 			paragraph = re.sub('&amp;', '', paragraph)
 			## some u s print
-			paragraph = re.sub('\\.US\\._|U\\. S\\.|S\\. C\\.|L\\. ed\\.|Sup\\.|U\\.S\\.C\\.|S\\.Ct\\.|L\\.Ed\\.', '', paragraph)
+			paragraph = re.sub('U\\.S\\.|\\.US\\._|U\\. S\\.|S\\. C\\.|L\\. ed\\.|Sup\\.|U\\.S\\.C\\.|S\\.Ct\\.|L\\.Ed\\.', '', paragraph)
 			## stars
 			paragraph = re.sub('\\*(.*)\\*(.*)\\*', '', paragraph)
 			## sections
 			paragraph = re.sub('[§]+', '', paragraph)
 			## quotes longer than three words, out of here. 
-			paragraph = quote_kill(paragraph)
+			paragraph = quote_kill(paragraph, "double")
+			## also when they're enclosed with single ticks. 
+			paragraph = quote_kill(paragraph, "single")
 			## justice names
 			paragraph = re.sub('Mr. Justice [A-Z]+', '', paragraph)
 			paragraph = re.sub('CHIEF JUSTICE [A-Z]+', '', paragraph)
 			## case jargon like Court to court
 			paragraph = re.sub("I'm", "im", paragraph)
+			paragraph = re.sub("Co\\.", "Co", paragraph)
+			paragraph = re.sub("Ltd\\.", "Ltd", paragraph)
+			paragraph = re.sub("Inc\\.", "Inc", paragraph)
+			paragraph = re.sub("v\\.", "v", paragraph)
 			paragraph = re.sub("\bI\b|I\b", "i", paragraph)
 			paragraph = re.sub('Court', 'court', paragraph)
 			paragraph = re.sub('Amendment', "amendment", paragraph)
@@ -137,6 +143,8 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub("at -", "", paragraph)
 			paragraph = re.sub("Ibid", "", paragraph)
 			paragraph = re.sub("\bit'\b", "it's", paragraph)
+			paragraph = re.sub("\\(T\\)he", "The", paragraph)
+			paragraph = re.sub("-\\,", "", paragraph)
 
 			## ordinals
 			paragraph = re.sub('First', "first", paragraph)
@@ -175,12 +183,25 @@ def clean_and_normalize_data(case_list, stopwords):
 			## filter empties
 			if (paragraph == '' or paragraph == '.' or paragraph == "END_OF_OPINIONS" or len(paragraph) < 1):
 				continue
+
+			## get rid of citations.
+			paragraph = re.sub('See (.*?) \\(\\)\\.', '', paragraph)
+			paragraph = re.sub('See ante\\, at (.*)\\.', '', paragraph)
 			## lowercase first word in each paragraph
 			## "If second arg is a function, it is called for every non-overlapping occurrence of pattern.""
 			## https://docs.python.org/3/library/re.html
 			## so replacement is called on that match. handy!
-			paragraph = re.sub('(?<!.)[A-Z][a-z]+', replacement, paragraph) 
+			paragraph = re.sub('(?<!.)[A-Z][a-z]{0,}', replacement, paragraph) 
 			## lowercase whole thing
+			print('ok, before the sub part: ', paragraph)
+			## remove any uppercased leading sentence words
+			## need to be more clever
+			## i can remove the upper cases after i lowercase the first word in each sentence. 
+			## lowercase group 3
+			paragraph = re.sub('(\\w{2,}|([^A-Z]))(\\.\\s+)(\\w+)', replacement_dupe, paragraph) 
+			print('\n')			
+			print('ok, after the sub part: ', paragraph)
+
 			paragraph = re.sub('[A-Z][a-z]+', '', paragraph)
 			## straggling abbrevs
 			paragraph = re.sub('[A-Z]', '', paragraph)
@@ -216,6 +237,8 @@ def clean_and_normalize_data(case_list, stopwords):
 			paragraph = re.sub(' +', ' ', paragraph)
 			## split into sentences
 			sentences = paragraph.split('.')
+			print('\n')
+			print('at the end of this', paragraph)
 			for sentence in sentences:
 				## filter sentences. 
 				punctuation_count = len(re.findall('\\.|\\,|\\;|\\:', sentence))
@@ -352,6 +375,13 @@ def first_upper(string):
 '''
 def replacement(match):
 	return match.group(0).lower()
+
+def replacement_dupe(match):
+	print(match.group(1))
+	print(match.group(2))
+	print(match.group(3))
+	print(match.group(4))
+	return match.group(1) + match.group(3) + " " + match.group(4).lower()
 
 '''
 	gentle preprocessing
@@ -589,8 +619,11 @@ def break_apart_justice_paragraphs(case_directory):
 '''
 	removes any quotes of 4 words or longer
 '''
-def quote_kill(string):
-	quote_pattern = re.compile(r'"(.*?)"')
+def quote_kill(string, type):
+	if (type == 'double'):
+		quote_pattern = re.compile(r'"(.*?)"')
+	else:
+		quote_pattern = re.compile(r"'(.*?)'")
 	kill_dict = {}
 	for m in re.finditer(quote_pattern, string):
 		if (m.group(1) is not None and len(m.group(1).split(' ')) > 3):
@@ -598,8 +631,11 @@ def quote_kill(string):
 	
 	for i, j in kill_dict.items():
 		string = string.replace(i, j)
+
+	string = string.replace('""', '')
+	string = string.replace("''", "")
 	
-	return string.replace('""', '')
+	return string
 
 if __name__ == '__main__':
 
@@ -780,7 +816,7 @@ if __name__ == '__main__':
 	## very good!
 	## for each text file in /justice_data/, go until END_OF_OPINIONS
 	
-	speech, speakers = break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/paragraphs')
+	speech, speakers = break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/small')
 	test = clean_and_normalize_data(speech, None)
 
 	for i in range(len(test)):
