@@ -1,0 +1,63 @@
+gpt2 bs
+
+to restart ....
+
+reimport from the top lines. 
+
+try doing this again with another justice and naming it run 2 
+
+#### 
+python src/generate_unconditional_samples.py --top_k 10 --temperature 0.9 --nsamples 10 --seed 0 \
+ --model_name kennedy1
+
+ ## pip3 install tensorflow
+ ## pip3 install fire
+
+
+## so this other non notebook tutuorial is about using this pre packaged gpt-2 library from open ai itself
+ 	
+(in google colab, need to prefix any bash commands w/ '!')
+python3 download_model.py 117M
+
+( this worked)
+
+[PYTHONPATH=src ./encode.py ../justice_data/sents/BRENNANsents.txt brennan-lines-v001.txt.npz]
+
+
+# in google colab
+!PYTHONPATH=src ./encode.py ../drive/My\ Drive/sents/GINSBURGsents.txt ../data/ginsburg-lines-v001.txt.npz
+
+
+!PYTHONPATH=src ./train.py --model_name 117M --dataset ginsburg-lines-v001.txt.npz \
+--batch_size 2 --save_every 1000 --sample_every 1000 \
+--learning_rate=.0001 --top_p 0.9
+
+##### required module tensor flow 1.15 is not going to work with python 3.8 so have to make a virtual environment to achieve this ############
+
+# https://www.freecodecamp.org/news/manage-multiple-python-versions-and-virtual-environments-venv-pyenv-pyvenv-a29fb00c296f/
+
+brew install pyenv
+## updated my bash profile with a pyenv line
+
+## install 3.5.9
+pyenv install 3.5.9
+pyenv local 3.5.9
+
+## create virtual environment
+python3 -m venv gpt2env
+## use it
+source gpt2env/bin/activate
+## leave?
+deactivate
+
+## in the virtual env
+pip install numpy
+pip install fire
+pip install tensorflow==1.15.0
+pip install regex
+pip install toposort
+######### apparenty there just isnt a GPU distro for mac ###########........
+
+# make a python file executable
+chmod +x file.py
+
