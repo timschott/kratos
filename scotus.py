@@ -815,11 +815,12 @@ if __name__ == '__main__':
 	## that's kind of where we're at with those.
 	## overall, though, we have our data from cases and opinions in a stable format.
 	## very good!
-	## for each text file in /justice_data/, go until END_OF_OPINIONS
-	
+	'''
 	speech, speakers = break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/paragraphs/')
+	## okay thanks
 	test = clean_and_normalize_data(speech, None)
 
+	## lets write this information out to a file. 
 	for i in range(len(test)):
 		justice_name = speakers[i]
 		with open('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/sents/' + justice_name + 'sents.txt', 'w') as f:
@@ -827,17 +828,43 @@ if __name__ == '__main__':
 				f.write("%s\n" % str(re.sub("\\'s", "'s", item)))
 
 	print('donezo')
-	
-	## lets write this information out to a file. 
 	'''
-	The Court tells us that in the maintenance of its public schools,
-	 '(The State government) can close its doors or suspend 
-	its operations' so that its citizens may be free for religious devotions or instruction. 
+	## for each justices sentences, train gpt2! lol. 
 
-	the tells us that in the maintenance of its public schoolsgovernment) can close its doors or suspend 
-	its operations' so that its citizens 
-	may be free for religious devotions or instruction
-'''
+	## alright, i'm back. this time, just to do only the top part w/o the api work. 
+
+	'''
+
+	justice_output, hits= extract_justice_speak_from_xml(xml_files, justices_dict, chief_justices_dict)
+	
+	for i in range(len(justice_output)):
+		justice_name = iv_justices_dict[i]
+		with open('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/paragraphs_just_opinions/' + justice_name + 'paragraphs_just_opinions.txt', 'w') as f:
+			for item in justice_output[i]:
+				if (isinstance (item, list)):
+					f.write("%s\n" % str(re.sub("\\'s", "'s", item[0])))
+				else:
+					f.write("%s\n" % str(re.sub("\\'s", "'", item)))
+	print('fin!')
+
+	speech, speakers = break_apart_justice_paragraphs('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/paragraphs_just_opinions/')
+	## okay thanks
+	test = clean_and_normalize_data(speech, None)
+
+	## lets write this information out to a file. 
+	for i in range(len(test)):
+		justice_name = speakers[i]
+		with open('/Users/tim/Documents/postgrad/python_projects/kratos/justice_data/sents_just_opinions/' + justice_name + 'sents_just_opinions.txt', 'w') as f:
+			for item in test[i]:
+				f.write("%s\n" % str(re.sub("\\'s", "'s", item)))
+
+	print('done with that')
+	'''
+
+	## it might be helpful to have them separate so ill actually do the merging on the command lines. 
+	## join via unix $ cat * > merged-file
+
+
 
 
 
