@@ -33,6 +33,10 @@ import yagmail
 import smtplib, ssl
 
 
+"""	
+	gets environment vars from .env file
+	return: keys, list filled with credentials for the News API and Twitter API 
+"""
 def env_vars():
 	keys = []
 
@@ -52,9 +56,11 @@ def env_vars():
 """
 
 def init_client(key):
-	if (key is None):
+	if key is None:
 		print ('blank news api key')
 		return None
+
+	# call and return a NewsApiClient
 	return NewsApiClient(api_key = key)
 
 """	
@@ -70,32 +76,33 @@ def init_client(key):
 
 def init_twitter_client(api_key, secret_key, access_token, access_secret):
 
-	if (api_key is None):
+	if api_key is None:
 		print('twitter api key is null')
 		return None
 
-	if (secret_key is None):
+	if secret_key is None:
 		print ('twitter secret is null')
 		return None
 
-	if (access_token is None):
+	if access_token is None:
 		print ('twitter token is null')
 		return None
 
-	if (access_secret is None):
+	if access_secret is None:
 		print ('twitter secret is null')
 		return None
 
 	auth = tweepy.OAuthHandler(api_key, secret_key)
 	auth.set_access_token(access_token, access_secret)
+	# create a Twitter API client with Tweepy, which is just a wrapper
 	client = tweepy.API(auth)
 
 	return client
 
 """
-	get today's date and yesterday's date, fomratted for the api call.
-	(today's date, at 6:00)
-	(yesterday's date, at 6:01)
+	get the current date/time, and 1 hour prior to that
+	that's the window of granularity we search through
+	since the cron-job runs every every hour.
 	return: date_list, list with both dates. 
 
 """
@@ -105,7 +112,7 @@ def get_dates():
 	## present time
 	present = datetime.now() - timedelta(hours=4)
 
-	## 6 hours prior. 
+	## 1 hours prior. 
 	previous = present - timedelta(hours=1)
 
 	x = present.strftime('%Y-%m-%d%H:%M:%S')
@@ -131,15 +138,15 @@ def get_dates():
 		key - q
 	param: source is the entity we're pulling from
 		for us, we'll use the-washington-post
-		key - sources
+		(key - sources)
 	param: date_from, starting date, in this format
 		2020-04-02T00:24:52
-		key - from_param
-	param: date_to, ending dat, in same format as above
-		key - to
+		(key - from_param)
+	param: date_to, ending date, in same format as above
+		(key - to)
 	param: sort_type, what order to output data in
 		we'll use publishedAt (most recent first)
-		key - sort_by
+		(key - sort_by)
 	client method we'll hit is
 	newsapi#get_everything
 	return: all_articles, the big api response
@@ -149,17 +156,17 @@ def get_dates():
 def api_call(api_client, search_phrase, source, date_from, date_to,
 				sort_type):
 
-	if (api_client is None):
+	if api_client is None:
 		print ('null client')
 		return None
 	
-	## json!
+	## pull in json from news api
 	all_articles = api_client.get_everything(q=search_phrase,
                                       sources=source,
                                       from_param=date_from,
                                       to=date_to,
                                       sort_by=sort_type)
-	if (all_articles is None):
+	if all_articles is None:
 		print ('empty json from api')
 		return None
 	
@@ -175,13 +182,13 @@ def api_call(api_client, search_phrase, source, date_from, date_to,
 
 def get_article_dict(article_json):
 
-	if (article_json is None):
+	if article_json is None:
 		print ('article json is null in #get_article_urls')
 		return None
 
 	articles = article_json["articles"]
 
-	if (articles is None):
+	if articles is None:
 		print ('malformed json')
 		return None
 
@@ -198,12 +205,12 @@ def get_article_dict(article_json):
 
 """
 	param: url, link to article.
-	return: article body - everything inside the body p tags.
-		now, the reason its important to capture this information programmatically
-		via bs4 is so we have the ability to comb through the entire article body
-		which is not possible using the news API (there is a character limit in the API response)
-		this tees up a forthcoming, simple regex for the "disclaimer".
-		i think this approach is preferable to relying on the news api's search because its
+	return: article body - everything inside the body <p> tags.
+		now, the reason it's important to capture this information programmatically
+		via B.S. is so we have the ability to comb through the entire article body
+		which is not possible using the news API (there is a character limit in the API response).
+		this tees up a forthcoming, fairly simple regex-search for the "disclaimer".
+		this approach is preferable to relying on the news api's search because it's
 		more transparent and i can continually update the regex should the disclaimer ever change.
 		plus if i want to do things like print out the context of the disclaimer, i have all the paras.
 		this method continues to grow as i find new DOM structures across the Post's different web silos.
@@ -212,7 +219,7 @@ def get_article_dict(article_json):
 
 def get_article_text(url):
 
-	if (url is None):
+	if url is None:
 		print ('broken url')
 		return None
 
@@ -227,51 +234,51 @@ def get_article_text(url):
 
 	teaser_div = soup.find("div", {"class": "teaser-content"})
 
-	if (teaser_div is not None):
+	if teaser_div is not None:
 		teaser_section = teaser_div.find("section")
-		if (teaser_section is not None):
+		if teaser_section is not None:
 			for div in teaser_section.find_all("div"):
-				if (div.find("p")):
+				if div.find("p"):
 					paragraphs.append(div.find("p").getText())
 
 	## Second part.
 
 	remainder_div = soup.find("div", {"class": "remainder-content"})
 
-	if (remainder_div is not None):
+	if remainder_div is not None:
 		remainder_section = remainder_div.find("section")
-		if (remainder_section is not None):
+		if remainder_section is not None:
 			for div in remainder_section.find_all("div"):
-				if (div.find("p")):
+				if div.find("p"):
 					paragraphs.append(div.find("p").getText())
 
 	## Going out Guide, with amazon callout at the end.
 
 	extra_div = soup.find("div", {"class": "extra"})
 
-	if (extra_div is not None):
-		if (extra_div.find("p")):
+	if extra_div is not None:
+		if extra_div.find("p"):
 			paragraphs.append(extra_div.find("p").getText())
 
 	## Interactives (with a "/graphics/" permalink)
 
 	graphics_div = soup.find("div", {"class": "story relative"})
-	if (graphics_div is not None):
-		print ('graph on me')
+	if graphics_div is not None:
+		print ('graphics')
 		for para in graphics_div.find_all("p"):
 			paragraphs.append(para.getText())
 
-	## Exclude free covid updates (BS can't parse these)
+	## Exclude free covid updates (B.S. can't parse these)
 
-	if (len(paragraphs) == 0):
+	if len(paragraphs) == 0:
 		meta_tag = soup.find("meta", {"property": "article:content_tier"})
 
-		if (meta_tag is not None):
+		if meta_tag is not None:
 			free = meta_tag['content']
-			if (free is not None):
+			if free is not None:
 				return None
 
-	if (paragraphs is None):
+	if paragraphs is None:
 		print ('paragraphs list is blank.')
 		return None
 
@@ -280,15 +287,16 @@ def get_article_text(url):
 """
 	param: paragraphs, list of paragraphs for the article (usually around 35-40)
 	return: string, 
-		positive case: ideally the clinching "disclaimer", but in the odd case its not enclosed in parentheses, the paragraph
-		the disclaimer is found in. 
-		negative case: 'not found'
+		positive case: ideally the clinching "disclaimer" sentence
+		but in the odd case its not enclosed in parentheses,
+		the whole paragraph the disclaimer is found in. 
+		negative case: return 'not found'
 
 """
 
 def find_note(paragraphs):
 
-	if (paragraphs is None):
+	if paragraphs is None:
 		return 'not found'
 
 	## strip punctuation and lowercase.
@@ -308,36 +316,36 @@ def find_note(paragraphs):
 			parens = re.findall(r'\(([^()]*)\)', p)
 
 			for m in parens:
-				if ("Bezos" in m):
+				if "Bezos" in m:
 					return '(' + m + ')'
 			
 			## not a parenthetical usage. now look for appositve usage. 
 
 			amazon_appositive = re.search('(Amazon[^\\.]*)(\,)(.*Bezos)(\,)(.*Post)', p)
 
-			if (amazon_appositive):
-				print ('appositive match')
+			if amazon_appositive:
+				print('appositive match')
 				return amazon_appositive.group(0) + "..."
 
 			else:
 				## need to cut the down the parts of the paragraph after Jeff Bezos..
 				## search for Amazon\’s(.*)
 				possessive = re.search('(Amazon\’s)(.*)(Bezos)(\,)(.*)(.*Post)', p)
-				if (possessive):
-					print ('possessive match')
+				if possessive:
+					print('possessive match')
 					return possessive.group(0) + '...'
 
 				else:
 					## straight up, Amazon founder and chief exec. Jeff Bezos owns the washington post. 
 					no_punctuation = re.search('(Amazon .*?Bezos.*?Post)', p)
-					if (no_punctuation):
+					if no_punctuation:
 						print('no punctuation match')
 						return no_punctuation.group(0)
 					else:	
 						## maybe they use the passive voice for it. Lol!
 						reverse = re.search('The(.*?)Post(.*?)Bezos(.*?)Amazon[\.\,]', p)
 						
-						if (reverse):
+						if reverse:
 							print ('reverse match')
 							print (reverse.group(0))
 							return reverse.group(0)
@@ -345,12 +353,12 @@ def find_note(paragraphs):
 						else: 
 							postlast = re.search('Jeff Bezos(.*?)Post', p)
 
-							if (postlast):
+							if postlast:
 								print ('post last')
 								print (postlast.group(0))
 								return postlast.group(0)
-							else:	
-								print('this paragraph has a long match im too lazy to look for')
+							else:
+								# some other match, too granular for now	
 								print(p)
 								return p
 		else:
@@ -380,7 +388,7 @@ def get_tweets(article_dict):
 		paras = get_article_text(value)
 		result = find_note(paras)
 			
-		if (result != 'not found'):
+		if result != 'not found':
 
 			formatted_tweet = result + " " + value
 			tweet_list.append(formatted_tweet)
@@ -397,11 +405,11 @@ def get_tweets(article_dict):
 
 def send_tweets(tweet_list, client):
 
-	if (tweet_list is None):
+	if tweet_list is None:
 		print ('empty results list')
 		return None
 
-	if (client is None):
+	if client is None:
 		print ('null twitter client')
 		return None
 
@@ -444,7 +452,7 @@ def cloud_call(request):
 		## send through article vals to parser methods
 		tweet_list = get_tweets(article_dict)
 
-		if (tweet_list is None):
+		if tweet_list is None:
 			return 'Could not send tweets.'
 
 		else:
@@ -492,7 +500,7 @@ if __name__ == "__main__":
 
 	debug = True
 
-	if (debug):
+	if debug:
 		news_client = init_client(s_config.api_key)
 
 		dates = get_dates()
@@ -512,7 +520,9 @@ if __name__ == "__main__":
 
 		tweet_list = get_tweets(article_dict)
 		print (tweet_list)
-		## where are the emails ???
-		print ("ok")
-	else: 
-		print ('local!')
+		print ("fin")
+	else:
+			twitter_client = init_twitter_client(twitter_api_key, twitter_secret_key, twitter_access_token, twitter_access_secret)
+
+			## publish tweets
+			tweet_count = send_tweets(tweet_list, twitter_client)
