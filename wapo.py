@@ -24,7 +24,7 @@ import tweepy
 ## date 
 from datetime import date, datetime, timedelta
 
-## schleep
+## sleep
 from time import sleep
 
 ## mails
