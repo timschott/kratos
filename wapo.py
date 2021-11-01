@@ -32,6 +32,18 @@ import yagmail
 
 import smtplib, ssl
 
+"""
+	wapo.py - powers twitter.com/WashingtonBezos
+	this application is deployed via a Google Cloud function, so 
+	this file is meant as a reference.
+
+	the difference with that file is that the execution is triggered from an HTTP request
+	from the google cloud function endpoint. and it actually invokes the send_tweet function
+
+	it runs once every hour via a cronjob.
+
+"""
+
 
 """	
 	gets environment vars from .env file
@@ -49,8 +61,9 @@ def env_vars():
 
 	return keys
 
-"""	param: key for news api -- https://newsapi.org
+"""	
 	initializes news api cleint
+	param: key for news api -- https://newsapi.org
 	return: instantiated NewsApiClient. 
 
 """
@@ -65,6 +78,7 @@ def init_client(key):
 
 """	
 	creates a twitter client using the tweepy library - https://www.tweepy.org/.
+	tweepy is a just a wrapper that provides easy hooks for `send_tweets` etc.
 	param: api_key - generic twitter api key
 	param: secret_key - twitter secret key
 	param: access_token - twitter access token
@@ -100,9 +114,11 @@ def init_twitter_client(api_key, secret_key, access_token, access_secret):
 	return client
 
 """
-	get the current date/time, and 1 hour prior to that
+	helper method to retrieve the current date and time, and 1 hour prior to that
 	that's the window of granularity we search through
 	since the cron-job runs every every hour.
+	the time zone doesn't matter because we are consistently using the same call
+	this helps ensure we don't double-post any tweets
 	return: date_list, list with both dates. 
 
 """
@@ -128,7 +144,8 @@ def get_dates():
 	return date_list
 
 """
-	information about the api call
+	calls the news api's everything endpoint (https://newsapi.org/docs/endpoints/everything)
+	information about the api call:
 	
 	param: api_client 
 		the initalized api client 
@@ -147,8 +164,6 @@ def get_dates():
 	param: sort_type, what order to output data in
 		we'll use publishedAt (most recent first)
 		(key - sort_by)
-	client method we'll hit is
-	newsapi#get_everything
 	return: all_articles, the big api response
 
 """
@@ -173,9 +188,9 @@ def api_call(api_client, search_phrase, source, date_from, date_to,
 	return all_articles
 
 """
+	parses the response from the news api and returns the urls from matched articles
+	(great banner ad for graphql -- would be nice if we could just ask for that field!)
 	param: article_json, raw news api response blob
-		will return just the urls from these articles
-		(graphql would be great, here)
 	return: article_data, dict of article titles and urls
 
 """
@@ -203,17 +218,19 @@ def get_article_dict(article_json):
 
 	return article_data
 
-"""
+"""	
+	uses Beatiful Soup (b.s) to parse the DOM of a given article and extract
+	the "content" (text contained in story <p> tags).
+	now, the reason it's important to capture this information programmatically
+	via B.S. is so we have the ability to comb through the entire article body
+	which is not possible using the news API (there is a character limit in the API response).
+	this tees up a forthcoming, fairly simple regex-search for the "disclaimer".
+	this approach is preferable to relying on the news api's search because it's
+	more transparent and i can continually update the regex should the disclaimer ever change.
+	plus if i want to do things like print out the context of the disclaimer, i have all the paras.
+	this method continues to grow as i observe new DOM structures across the Post's different web silos.
 	param: url, link to article.
-	return: article body - everything inside the body <p> tags.
-		now, the reason it's important to capture this information programmatically
-		via B.S. is so we have the ability to comb through the entire article body
-		which is not possible using the news API (there is a character limit in the API response).
-		this tees up a forthcoming, fairly simple regex-search for the "disclaimer".
-		this approach is preferable to relying on the news api's search because it's
-		more transparent and i can continually update the regex should the disclaimer ever change.
-		plus if i want to do things like print out the context of the disclaimer, i have all the paras.
-		this method continues to grow as i find new DOM structures across the Post's different web silos.
+	return: article body - the relevant content one would expect to see inside body <p> tags.
 
 """
 
@@ -285,11 +302,13 @@ def get_article_text(url):
 	return paragraphs
 
 """
+	helper function to find the disclaimer given a list of paragraphs
+	in general: use a regex to find the match and then return the entire capture group
 	param: paragraphs, list of paragraphs for the article (usually around 35-40)
-	return: string, 
+	return: string...
 		positive case: ideally the clinching "disclaimer" sentence
 		but in the odd case its not enclosed in parentheses,
-		the whole paragraph the disclaimer is found in. 
+		instead hand back the entire paragraph the disclaimer is found in. 
 		negative case: return 'not found'
 
 """
@@ -311,6 +330,7 @@ def find_note(paragraphs):
 		## search original paragraphs, we want the original form
 		if (x):
 
+			## look for parenthetical usage, quite common
 			parentheticals = re.search('\(([^()]*)\)', p)
 
 			parens = re.findall(r'\(([^()]*)\)', p)
@@ -319,7 +339,7 @@ def find_note(paragraphs):
 				if "Bezos" in m:
 					return '(' + m + ')'
 			
-			## not a parenthetical usage. now look for appositve usage. 
+			## not a parenthetical usage. now look for appositive usage. 
 
 			amazon_appositive = re.search('(Amazon[^\\.]*)(\,)(.*Bezos)(\,)(.*Post)', p)
 
@@ -327,49 +347,49 @@ def find_note(paragraphs):
 				print('appositive match')
 				return amazon_appositive.group(0) + "..."
 
+			## need to cut the down the parts of the paragraph after Jeff Bezos..
+			## search for Amazon\’s(.*)
+			possessive = re.search('(Amazon\’s)(.*)(Bezos)(\,)(.*)(.*Post)', p)
+			if possessive:
+				print('possessive match')
+				return possessive.group(0) + '...'
+
+			## e.g. "Amazon founder and chief exec. Jeff Bezos owns the Washington post." 
+			no_punctuation = re.search('(Amazon .*?Bezos.*?Post)', p)
+			if no_punctuation:
+				print('no punctuation match')
+				return no_punctuation.group(0)
+			
+			## passive voice...!
+			reverse = re.search('The(.*?)Post(.*?)Bezos(.*?)Amazon[\.\,]', p)
+			
+			if reverse:
+				print ('reverse match')
+				print (reverse.group(0))
+				return reverse.group(0)
+
+			postlast = re.search('Jeff Bezos(.*?)Post', p)
+
+			if postlast:
+				print ('post last')
+				print (postlast.group(0))
+				return postlast.group(0)
 			else:
-				## need to cut the down the parts of the paragraph after Jeff Bezos..
-				## search for Amazon\’s(.*)
-				possessive = re.search('(Amazon\’s)(.*)(Bezos)(\,)(.*)(.*Post)', p)
-				if possessive:
-					print('possessive match')
-					return possessive.group(0) + '...'
-
-				else:
-					## straight up, Amazon founder and chief exec. Jeff Bezos owns the washington post. 
-					no_punctuation = re.search('(Amazon .*?Bezos.*?Post)', p)
-					if no_punctuation:
-						print('no punctuation match')
-						return no_punctuation.group(0)
-					else:	
-						## maybe they use the passive voice for it. Lol!
-						reverse = re.search('The(.*?)Post(.*?)Bezos(.*?)Amazon[\.\,]', p)
-						
-						if reverse:
-							print ('reverse match')
-							print (reverse.group(0))
-							return reverse.group(0)
-
-						else: 
-							postlast = re.search('Jeff Bezos(.*?)Post', p)
-
-							if postlast:
-								print ('post last')
-								print (postlast.group(0))
-								return postlast.group(0)
-							else:
-								# some other match, too granular for now	
-								print(p)
-								return p
+				# some other match, just grab the whole thing
+				print(p)
+				return p
 		else:
 			continue
 
 	return 'not found'
 
 """
+	calls #get_article_text and #find_note that scrape text out of url 
+	and determine if it contains our interest string. formats the tweet
+	as well
+
 	param: article_dict, struct for article titles and urls
-		calls #get_article_text and #find_note, that scrape text out of url and determine if it contains our interest string.
-		formats the tweet
+
 	return: tweet_list, list of tweets to send
 
 """
@@ -396,9 +416,10 @@ def get_tweets(article_dict):
 	return tweet_list
 
 """
+	uses tweepy#update_status method to post new tweets to timeline
+
 	param: tweet_list, struct for tweets
 	param: client, twitter client. 
-		uses tweepy#update_status method to post new tweets to timeline
 	return: tweet_count, number of successful posts. 
 
 """
@@ -423,8 +444,46 @@ def send_tweets(tweet_list, client):
 
 	return tweet_count
 
+if __name__ == "__main__":
+
+	# maintain this, so we don't accidentally tweet while debugging
+	debug = True
+
+	if debug:
+		news_client = init_client(s_config.api_key)
+
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2021-10-24T18:05:01', '2021-10-23T18:55:00', 'publishedAt')
+
+		article_dict = get_article_dict(article_json)
+
+		print (article_dict)
+
+		tweet_list = get_tweets(article_dict)
+
+		print (tweet_list)
+	else:
+		# initialize News API client
+		news_client = init_client(s_config.api_key)
+		# get dates for interval
+		dates = get_dates()
+		# call news API
+		article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
+		# break out response and extract the mention
+		article_dict = get_article_dict(article_json)
+		# package into tweets
+		tweet_list = get_tweets(article_dict)
+		# initialize Twitter API client
+		twitter_client = init_twitter_client(twitter_api_key, twitter_secret_key, twitter_access_token, twitter_access_secret)
+		# publish tweets
+		tweet_count = send_tweets(tweet_list, twitter_client)
+
+"""
+	this is what's called in the version of the code hosted on Google Cloud. 
+	Not used in the debug version.
+
+"""
 def cloud_call(request):
-	## load env vars
+		## load env vars
 		key_array = env_vars()
 
 		## news api creds
@@ -464,6 +523,16 @@ def cloud_call(request):
 
 			return 'Sent tweets!'
 
+"""
+	alert account owner about an issue parsing the dom
+
+	param: email_password, from .env file
+	param: sender, the designated email address the mail should be from
+	param: receiver, the designated email address to deliver the mail to
+	param: article_dict, dict containing titles and links for articles themselves
+	param: tweet_list, whatever did make it through
+
+"""
 def send_email(email_password, sender, receiver, article_dict, tweet_list):
 	port = 465  
 	password = email_password
@@ -472,6 +541,9 @@ def send_email(email_password, sender, receiver, article_dict, tweet_list):
 	links = []
 	for key in article_dict.keys():
 		links.append(key)
+
+	if tweet_list is None:
+		return
 
 	big_list = links + tweet_list
 
@@ -484,45 +556,3 @@ def send_email(email_password, sender, receiver, article_dict, tweet_list):
 	with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
 		server.login(sender, password)
 		server.sendmail(sender, receiver, formatted_message)
-
-"""
-	this application is deployed via a Google cloud function, so 
-	this file is meant as a reference for the implementation. in the full
-	version of the file (which I didn't commit) i actually call the #send_tweet method
-
-	the only difference with that file is that the function is triggered from an HTTP request
-	from the google cloud function endpoint
-
-	it runs once daily via a cronjob.
-
-"""
-if __name__ == "__main__":
-
-	debug = True
-
-	if debug:
-		news_client = init_client(s_config.api_key)
-
-		dates = get_dates()
-		for date in dates:
-			print('date', date)
-		# plug in date range to debug. 
-		article_json = api_call(news_client, "+Bezos", 'the-washington-post', dates[0], dates[1], 'publishedAt')
-		# article_json = api_call(news_client, "+Bezos", 'the-washington-post', '2020-06-01T18:05:01', '2020-06-03T18:55:00', 'publishedAt')
-
-		# print (article_json)
-
-		article_dict = get_article_dict(article_json)
-
-		print (article_dict)
-
-		# print ('---------------------------------------')
-
-		tweet_list = get_tweets(article_dict)
-		print (tweet_list)
-		print ("fin")
-	else:
-			twitter_client = init_twitter_client(twitter_api_key, twitter_secret_key, twitter_access_token, twitter_access_secret)
-
-			## publish tweets
-			tweet_count = send_tweets(tweet_list, twitter_client)
