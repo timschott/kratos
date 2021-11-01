@@ -318,19 +318,26 @@ def find_note(paragraphs):
 	if paragraphs is None:
 		return 'not found'
 
-	## strip punctuation and lowercase.
 	for p in paragraphs:
 
+		## strip punctuation
 		stripped = p.translate(str.maketrans('', '', string.punctuation))
+		## lowercase
 		lower = stripped.lower()
 
-		## fairly simple regex. can capture things like "Jeff Bezos owns the Washington Post" and "Jeff Bezos is the owner of the Washington Post"
+		## base regex
+		## fairly simple, can capture things like "Jeff Bezos owns the Washington Post" and "Jeff Bezos is the owner of the Washington Post"
+		## in theory, this should *always* return a match for at least one paragraph
+		## or else it means the article contains a mention of Bezos
+		## but does not have the disclaimer
 		x = re.search("bezos(.*)post|post(.*)bezos", lower)
 
-		## search original paragraphs, we want the original form
-		if (x):
+		## with each potential regex, we will search against p
+		## because we want the original form (casing/punctuation)
+		## that way the tweet is consistent w/ what is in the text
+		if x:
 
-			## look for parenthetical usage, quite common
+			## look for parenthetical usage, the most common
 			parentheticals = re.search('\(([^()]*)\)', p)
 
 			parens = re.findall(r'\(([^()]*)\)', p)
