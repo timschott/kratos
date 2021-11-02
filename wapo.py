@@ -348,7 +348,7 @@ def find_note(paragraphs):
 				if "Bezos" in m:
 					return '(' + m + ')'
 			
-			## not a parenthetical usage. now look for appositive usage. 
+			## now look for appositive usage. 
 			## Amazon's founder, Jeff Bezos, owns the Washington Post
 			amazon_appositive = re.search('(Amazon[^\\.]*)(\,)(.*Bezos)(\,)(.*Post)', p)
 
@@ -356,13 +356,14 @@ def find_note(paragraphs):
 				print('appositive match')
 				return amazon_appositive.group(0) + "..."
 
-			## need to cut the down the parts of the paragraph after Jeff Bezos..
+			## look for possessive usage.
 			## Amazon's founder, Jeff Bezos, owns the Post
 			possessive = re.search('(Amazon\’s)(.*)(Bezos)(\,)(.*)(.*Post)', p)
 			if possessive:
 				print('possessive match')
 				return possessive.group(0) + '...'
 
+			## look for no punc.
 			## Amazon founder and chief exec. Jeff Bezos owns the Washington Post
 			## Amazon founder Jeff Bezos owns the Washington Post
 			no_punctuation = re.search('(Amazon .*?Bezos.*?Post)', p)
@@ -370,7 +371,7 @@ def find_note(paragraphs):
 				print('no punctuation match')
 				return no_punctuation.group(0)
 			
-			## passive voice...!
+			## look for passive voice.
 			## The Post is owned by Jeff Bezos, Amazon's owner
 			reverse = re.search('The(.*?)Post(.*?)Bezos(.*?)Amazon[\.\,]', p)
 			
@@ -379,6 +380,7 @@ def find_note(paragraphs):
 				print (reverse.group(0))
 				return reverse.group(0)
 
+			## look for trailing-post
 			## Jeff Bezos, who owns the Post
 			postlast = re.search('Jeff Bezos(.*?)Post', p)
 
