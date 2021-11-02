@@ -338,6 +338,8 @@ def find_note(paragraphs):
 		if x:
 
 			## look for parenthetical usage, the most common
+			## (Amazon founder Jeff Bezos owns the Washington Post.)
+			## (Bezos owns the Washington Post.)
 			parentheticals = re.search('\(([^()]*)\)', p)
 
 			parens = re.findall(r'\(([^()]*)\)', p)
@@ -347,7 +349,7 @@ def find_note(paragraphs):
 					return '(' + m + ')'
 			
 			## not a parenthetical usage. now look for appositive usage. 
-
+			## Amazon's founder, Jeff Bezos, owns the Washington Post
 			amazon_appositive = re.search('(Amazon[^\\.]*)(\,)(.*Bezos)(\,)(.*Post)', p)
 
 			if amazon_appositive:
@@ -355,19 +357,21 @@ def find_note(paragraphs):
 				return amazon_appositive.group(0) + "..."
 
 			## need to cut the down the parts of the paragraph after Jeff Bezos..
-			## search for Amazon\’s(.*)
+			## Amazon's founder, Jeff Bezos, owns the Post
 			possessive = re.search('(Amazon\’s)(.*)(Bezos)(\,)(.*)(.*Post)', p)
 			if possessive:
 				print('possessive match')
 				return possessive.group(0) + '...'
 
-			## e.g. "Amazon founder and chief exec. Jeff Bezos owns the Washington post." 
+			## Amazon founder and chief exec. Jeff Bezos owns the Washington Post
+			## Amazon founder Jeff Bezos owns the Washington Post
 			no_punctuation = re.search('(Amazon .*?Bezos.*?Post)', p)
 			if no_punctuation:
 				print('no punctuation match')
 				return no_punctuation.group(0)
 			
 			## passive voice...!
+			## The Post is owned by Jeff Bezos, Amazon's owner
 			reverse = re.search('The(.*?)Post(.*?)Bezos(.*?)Amazon[\.\,]', p)
 			
 			if reverse:
@@ -375,6 +379,7 @@ def find_note(paragraphs):
 				print (reverse.group(0))
 				return reverse.group(0)
 
+			## Jeff Bezos, who owns the Post
 			postlast = re.search('Jeff Bezos(.*?)Post', p)
 
 			if postlast:
@@ -382,7 +387,10 @@ def find_note(paragraphs):
 				print (postlast.group(0))
 				return postlast.group(0)
 			else:
-				# some other match, just grab the whole thing
+				## some other match, just grab the whole thing
+				## Amazon founder Jeff Bezos, with an estimated net worth of $201 billion, 
+				## topped the list for the fourth year in a row, Forbes said. 
+				## He also owns Blue Origin, an aerospace company, and The Washington Post
 				print(p)
 				return p
 		else:
