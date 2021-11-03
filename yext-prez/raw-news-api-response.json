@@ -1,0 +1,19 @@
+{
+   "status":"ok",
+   "totalResults":1,
+   "articles":[
+      {
+         "source":{
+            "id":"the-washington-post",
+            "name":"The Washington Post"
+         },
+         "author":"Editorial Board",
+         "title":"Opinion | A Big Tech bill with promise comes to Congress - The Washington Post",
+         "description":"Opinion | A Big Tech bill with promise comes to Congress\\xa0\\xa0The Washington Post",
+         "url":"https://www.washingtonpost.com/opinions/2021/10/24/finally-promising-piece-tech-antitrust-legislation-congress/",
+         "urlToImage":"https://www.washingtonpost.com/wp-apps/imrs.php?src=https://arc-anglerfish-washpost-prod-washpost.s3.amazonaws.com/public/T5XZU5BGZAI6ZBZZLS3KXIYKGA.jpg&w=1440",
+         "publishedAt":"2021-10-24T12:12:12Z",
+         "content":"The devil, of course, is in what counts as unfair. These digital behemoths are different from their physical brethren, both in terms of the power they wield and in terms of the precision of their dat… [+2142 chars]"
+      }
+   ]
+}

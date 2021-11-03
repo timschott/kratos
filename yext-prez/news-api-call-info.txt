@@ -1,0 +1,29 @@
+## news api call info
+
+GET https://newsapi.org/v2/everything
+	?q=+Bezos
+	&sources=the-washington-post
+	&date_from=2021-10-24T18:05:01
+	&date_to=2021-10-23T18:55:00
+	&sort_by=publishedAt
+
+param: api_client 
+	the initalized api client 
+param: search_phrase is what we're searching for
+	to shrink down the target set, we can easily search for Bezos' (distinct) last name.
+	the leading '+' means its required.
+	key - q
+param: source is the entity we're pulling from
+	for us, we'll use the-washington-post
+	(key - sources)
+param: date_from, starting date, in this format
+	2020-04-02T00:24:52
+	(key - from_param)
+param: date_to, ending date, in same format as above
+	(key - to)
+param: sort_type, what order to output data in
+	we'll use publishedAt (most recent first)
+	(key - sort_by)
+return: all_articles, the big api response
+
+API 
