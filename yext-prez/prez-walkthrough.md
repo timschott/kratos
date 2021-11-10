@@ -72,10 +72,6 @@ Like this site I made at Brightspot:
 
 ![sleep-dot-com](sleep-dot-com-dom.png)
 
-Or, this example from Yext.com!
-
-![yext-bootstrap-good.png](yext-bootstrap-good.png)
-
 But, *Washington Post* `<div>`'s divide into `teaser-content` then `remainder-content`...
 
 ![wapo-dom](dom-to-parse.png)
